@@ -13,8 +13,13 @@ export default function PacienteInicio({ navigation }) {
 
   useEffect(() => {
     loadUserData();
-    loadPacienteData();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadPacienteData();
+    }
+  }, [user]);
 
   const loadUserData = async () => {
     try {
@@ -31,23 +36,40 @@ export default function PacienteInicio({ navigation }) {
     try {
       const especialidadesResult = await AuthService.getEspecialidades();
       if (especialidadesResult.success) {
-        setEspecialidades(especialidadesResult.data);
       }
 
       const medicosResult = await AuthService.getMedicos();
       if (medicosResult.success) {
-        setMedicos(medicosResult.data);
       }
 
       const citasResult = await AuthService.getCitasConMedicos();
-      if (citasResult.success && citasResult.data.length > 0 && user) {
-        const misCitas = citasResult.data.filter(
-          (cita) =>
-            cita.paciente_id === user.id ||
-            cita.paciente_nombre?.toLowerCase().includes(user.name?.toLowerCase())
-        );
-        if (misCitas.length > 0) {
-          setProximaCita(misCitas[0]);
+      
+      if (citasResult && citasResult.data && Array.isArray(citasResult.data) && citasResult.data.length > 0 && user) {
+        
+        const citasDelUsuario = citasResult.data;
+        
+        if (citasDelUsuario.length > 0) {
+          const ahora = new Date();
+          
+          const citasProximas = citasDelUsuario.filter(cita => {
+            if (!cita.fechaCita) return false;
+            const fechaCitaCompleta = new Date(`${cita.fechaCita}T${cita.horaCita || '00:00:00'}`);
+            const diferenciaDias = Math.ceil((fechaCitaCompleta - ahora) / (1000 * 60 * 60 * 24));
+            
+            return diferenciaDias >= 0 && diferenciaDias <= 7;
+          });
+
+
+          if (citasProximas.length > 0) {
+            citasProximas.sort((a, b) => {
+              const fechaA = new Date(`${a.fechaCita}T${a.horaCita || '00:00:00'}`);
+              const fechaB = new Date(`${b.fechaCita}T${b.horaCita || '00:00:00'}`);
+              return fechaA - fechaB;
+            });
+            setProximaCita(citasProximas[0]);
+          } else {
+            setProximaCita(null);
+          }
         } else {
           setProximaCita(null);
         }
@@ -55,7 +77,7 @@ export default function PacienteInicio({ navigation }) {
         setProximaCita(null);
       }
     } catch (error) {
-      console.error('Error loading paciente data:', error);
+      setProximaCita(null);
     }
   };
 
@@ -99,6 +121,34 @@ export default function PacienteInicio({ navigation }) {
     return time.substring(0, 5);
   };
 
+  const getEstadoColor = (estado) => {
+    switch (estado?.toLowerCase()) {
+      case 'confirmada':
+      case 'confirmado':
+        return { bg: '#E8F5E8', text: '#2E7D32' };
+      case 'pendiente':
+        return { bg: '#FFF3E0', text: '#EF6C00' };
+      case 'cancelada':
+      case 'cancelado':
+        return { bg: '#FFEBEE', text: '#C62828' };
+      default:
+        return { bg: '#F3E5F5', text: '#8E24AA' };
+    }
+  };
+
+  const getDiasRestantes = (fechaCita, horaCita) => {
+    if (!fechaCita) return '';
+    
+    const ahora = new Date();
+    const fechaCitaCompleta = new Date(`${fechaCita}T${horaCita || '00:00:00'}`);
+    const diferenciaDias = Math.ceil((fechaCitaCompleta - ahora) / (1000 * 60 * 60 * 24));
+    
+    if (diferenciaDias === 0) return 'Hoy';
+    if (diferenciaDias === 1) return 'Mañana';
+    if (diferenciaDias > 1) return `En ${diferenciaDias} días`;
+    return '';
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -130,32 +180,40 @@ export default function PacienteInicio({ navigation }) {
               <View style={styles.citaHeader}>
                 <Ionicons name="calendar-outline" size={20} color="#8E24AA" />
                 <Text style={styles.citaTitulo}>Cita Programada</Text>
+                <View style={styles.diasRestantesContainer}>
+                  <Text style={styles.diasRestantesText}>
+                    {getDiasRestantes(proximaCita.fechaCita, proximaCita.horaCita)}
+                  </Text>
+                </View>
               </View>
 
               <View style={styles.citaContent}>
                 <View style={styles.citaInfo}>
                   <MaterialCommunityIcons name="doctor" size={18} color="#4B5563" />
-                  <Text style={styles.citaText}>Dr. {proximaCita.medico_nombre || 'No asignado'}</Text>
-                </View>
-
-                <View style={styles.citaInfo}>
-                  <Ionicons name="medical-outline" size={18} color="#4B5563" />
-                  <Text style={styles.citaText}>{proximaCita.especialidad || 'Consulta general'}</Text>
+                  <Text style={styles.citaText}>
+                    Doctor(a) {proximaCita.medico_nombre || ''} {proximaCita.medico_apellido || ''}
+                  </Text>
                 </View>
 
                 <View style={styles.citaInfo}>
                   <Ionicons name="calendar-outline" size={18} color="#4B5563" />
-                  <Text style={styles.citaText}>{formatDate(proximaCita.fecha)}</Text>
+                  <Text style={styles.citaText}>{formatDate(proximaCita.fechaCita)}</Text>
                 </View>
 
                 <View style={styles.citaInfo}>
                   <Ionicons name="time-outline" size={18} color="#4B5563" />
-                  <Text style={styles.citaText}>{formatTime(proximaCita.hora_inicio)}</Text>
+                  <Text style={styles.citaText}>{formatTime(proximaCita.horaCita)}</Text>
                 </View>
               </View>
 
-              <View style={[styles.citaStatus, { backgroundColor: '#F3E5F5' }]}>
-                <Text style={[styles.citaStatusText, { color: '#8E24AA' }]}>
+              <View style={[
+                styles.citaStatus, 
+                { backgroundColor: getEstadoColor(proximaCita.estado).bg }
+              ]}>
+                <Text style={[
+                  styles.citaStatusText, 
+                  { color: getEstadoColor(proximaCita.estado).text }
+                ]}>
                   {proximaCita.estado || 'Confirmada'}
                 </Text>
               </View>
@@ -282,12 +340,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
+    justifyContent: 'space-between',
   },
   citaTitulo: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1A1A1A',
     marginLeft: 8,
+    flex: 1,
+  },
+  diasRestantesContainer: {
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  diasRestantesText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1976D2',
   },
   citaContent: {
     marginBottom: 16,
