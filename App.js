@@ -21,6 +21,10 @@ export default function App() {
         <Stack.Screen name="MedicosStack" component={MedicosStack} options={{ headerShown: false }} />
         <Stack.Screen name="horariosDisponiblesStack" component={horariosDisponiblesStack} options={{ headerShown: false }} />
         <Stack.Screen name="EspecialidadesStack" component={EspecialidadesStack} options={{ headerShown: false }} />
+<<<<<<< HEAD
+=======
+
+>>>>>>> a3fd7d847ab2b7e6ff7bda51275b953ee6dfd989
       </Stack.Navigator>
     </NavigationContainer>
   );
