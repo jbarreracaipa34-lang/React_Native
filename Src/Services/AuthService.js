@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://192.168.1.11:8000/api';
+const API_BASE_URL = 'http://192.168.137.1:8000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -164,7 +164,8 @@ async getMedicosConEspecialidades() { return api.get('/medicosConEspecialidad');
 async getMedicosConHorarios() { return api.get('/medicosConHorarios'); }
 async getPacientesConCitas() { return api.get('/pacientesConCitas'); }
 async getPacientesPorEPS(eps) { return api.get(`/pacientesPorEPS/${eps}`); }
-
+async getEspecialidadesConMedicos() {return api.get('/EspecialidadesConMedicos'); 
+}
 }
 
 export default new AuthService();

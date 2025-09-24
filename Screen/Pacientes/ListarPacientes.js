@@ -207,7 +207,6 @@ export default function ListarPacientes({ navigation }) {
 
     return (
       <View style={styles.accionesContainer}>
-        {/* Información detallada de las citas */}
         <View style={styles.citasInfo}>
           <Text style={styles.citasTitle}>Historial de citas:</Text>
           {paciente.citas.slice(0, 3).map((cita, index) => (
@@ -248,7 +247,6 @@ export default function ListarPacientes({ navigation }) {
           )}
         </View>
 
-        {/* Botones de acción */}
         <View style={styles.accionesPaciente}>
           <TouchableOpacity
             style={[styles.botonAccion, { borderColor: '#1E88E5' }]}
@@ -306,7 +304,6 @@ export default function ListarPacientes({ navigation }) {
                 {paciente.genero || 'No especificado'} • EPS: {paciente.eps || 'No disponible'}
               </Text>
               
-              {/* Información de la próxima cita */}
               {proximaCita && (
                 <View style={styles.proximaCitaInfo}>
                   <Ionicons name="calendar-outline" size={12} color="#2196F3" />
@@ -342,7 +339,6 @@ export default function ListarPacientes({ navigation }) {
                 </View>
               </View>
               
-              {/* Contador de citas */}
               <View style={styles.citasCounter}>
                 <Text style={styles.citasCounterNumber}>{paciente.citas.length}</Text>
                 <Text style={styles.citasCounterLabel}>citas</Text>
@@ -429,7 +425,6 @@ export default function ListarPacientes({ navigation }) {
         </View>
       </View>
 
-      {/* Estadísticas mejoradas */}
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>{pacientes.length}</Text>
