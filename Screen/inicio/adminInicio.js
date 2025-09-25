@@ -15,7 +15,7 @@ export default function AdminInicio() {
         setUser(authData.user);
       } else {
         console.warn('Usuario no autenticado');
-        Alert.alert('Sesión inválida', 'Por favor inicia sesión nuevamente');
+        Alert.alert('Sesion invalida', 'Por favor inicia sesion nuevamente');
       }
     };
 
@@ -23,11 +23,11 @@ export default function AdminInicio() {
   }, []);
 
   const handleLogout = () => {
-    Alert.alert('Cerrar Sesión', '¿Estás seguro que quieres cerrar sesión?',
+    Alert.alert('Cerrar Sesion', '¿Estas seguro que quieres cerrar sesion?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Cerrar Sesión',
+          text: 'Cerrar Sesion',
           style: 'destructive',
           onPress: async () => {
             await AuthService.logout();
@@ -59,7 +59,7 @@ export default function AdminInicio() {
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.actionsContainer}>
-          <Text style={styles.sectionTitle}>Gestión Administrativa</Text>
+          <Text style={styles.sectionTitle}>Gestion Administrativa</Text>
 
           <View style={styles.actionsGrid}>
             <TouchableOpacity
@@ -68,7 +68,7 @@ export default function AdminInicio() {
             >
               <MaterialCommunityIcons name="calendar-plus" size={40} color="#1E88E5" />
               <Text style={styles.actionTitle}>Programar Citas</Text>
-              <Text style={styles.actionDescription}>Crear nuevas citas médicas</Text>
+              <Text style={styles.actionDescription}>Crear nuevas citas medicas</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -85,8 +85,8 @@ export default function AdminInicio() {
               onPress={() => NavigationService.navigate('MedicosStack', { screen: 'ListarMedicos' })}
             >
               <MaterialCommunityIcons name="doctor" size={40} color="#8E24AA" />
-              <Text style={styles.actionTitle}>Gestionar Médicos</Text>
-              <Text style={styles.actionDescription}>Administrar médicos</Text>
+              <Text style={styles.actionTitle}>Gestionar Medicos</Text>
+              <Text style={styles.actionDescription}>Administrar medicos</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

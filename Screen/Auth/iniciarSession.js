@@ -50,7 +50,7 @@ export default function IniciarSession({ navigation }) {
         Alert.alert('Error', result.message);
       }
     } catch (error) {
-      Alert.alert('Error', 'Error de conexión');
+      Alert.alert('Error', 'Error de conexion');
     } finally {
       setLoading(false);
     }
@@ -74,7 +74,7 @@ export default function IniciarSession({ navigation }) {
           <Text style={styles.logoText}>🏥</Text>
         </View>
 
-        <Text style={styles.title}>Iniciar Sesión</Text>
+        <Text style={styles.title}>Iniciar Sesion</Text>
         <Text style={styles.subtitle}>Ingresa tus credenciales para acceder</Text>
 
         <View style={styles.formContainer}>
@@ -82,7 +82,7 @@ export default function IniciarSession({ navigation }) {
             <Ionicons name="mail-outline" size={20} color="#6B7280" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Correo electrónico"
+              placeholder="Correo electronico"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -121,7 +121,7 @@ export default function IniciarSession({ navigation }) {
             {loading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+              <Text style={styles.loginButtonText}>Iniciar Sesion</Text>
             )}
           </TouchableOpacity>
 
@@ -135,7 +135,7 @@ export default function IniciarSession({ navigation }) {
             style={styles.registerButton} 
             onPress={() => navigation.navigate('Registrar')}
           >
-            <Text style={styles.registerButtonText}>¿No tienes cuenta? Regístrate</Text>
+            <Text style={styles.registerButtonText}>¿No tienes cuenta? Registrate</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

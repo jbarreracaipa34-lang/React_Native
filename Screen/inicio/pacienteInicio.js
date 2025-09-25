@@ -82,11 +82,11 @@ export default function PacienteInicio({ navigation }) {
   };
 
   const handleLogout = () => {
-    Alert.alert('Cerrar Sesión', 'Seguro que quieres cerrar sesión?',
+    Alert.alert('Cerrar Sesion', 'Seguro que quieres cerrar sesion?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Cerrar Sesión',
+          text: 'Cerrar Sesion',
           style: 'destructive',
           onPress: async () => {
             await AuthService.logout();
@@ -145,7 +145,7 @@ export default function PacienteInicio({ navigation }) {
     
     if (diferenciaDias === 0) return 'Hoy';
     if (diferenciaDias === 1) return 'Mañana';
-    if (diferenciaDias > 1) return `En ${diferenciaDias} días`;
+    if (diferenciaDias > 1) return `En ${diferenciaDias} dias`;
     return '';
   };
 
@@ -175,7 +175,7 @@ export default function PacienteInicio({ navigation }) {
         }
       >
         <View style={styles.actionsContainer}>
-          <Text style={styles.sectionTitle}>¿Qué deseas hacer?</Text>
+          <Text style={styles.sectionTitle}>¿Que deseas hacer?</Text>
 
           <View style={styles.actionsGrid}>
             <TouchableOpacity
@@ -192,7 +192,7 @@ export default function PacienteInicio({ navigation }) {
               onPress={() => NavigationService.navigate('MedicosStack', { screen: 'VerMedicos' })}
             >
               <MaterialCommunityIcons name="doctor" size={40} color="#4CAF50" />
-              <Text style={styles.actionTitle}>Ver Médicos</Text>
+              <Text style={styles.actionTitle}>Ver Medicos</Text>
               <Text style={styles.actionDescription}>Explorar especialistas</Text>
             </TouchableOpacity>
 

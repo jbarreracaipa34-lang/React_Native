@@ -71,7 +71,7 @@ export default function NavegacionPrincipal() {
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="doctor" size={size} color={color} />
           ),
-          tabBarLabel: "Médicos",
+          tabBarLabel: "Medicos",
         }}
       />
 

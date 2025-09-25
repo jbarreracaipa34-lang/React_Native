@@ -13,22 +13,22 @@ export default function MedicosStack() {
       <Stack.Screen 
       name="Medicos"
       component={ListarMedicos} 
-      options={{ title: "Médicos" }} 
+      options={{ title: "Medicos" }} 
     />
       <Stack.Screen 
         name="Crear_EditarMedicos"
         component={Crear_EditarMedicos}
-        options={{ title: "Crear/Editar Médico" }}
+        options={{ title: "Crear/Editar Medico" }}
       />
       <Stack.Screen 
         name="EliminarMedicos"
         component={EliminarMedicos}
-        options={{ title: "Eliminar Médico" }}
+        options={{ title: "Eliminar Medico" }}
       />
       <Stack.Screen 
         name="DetalleMedicos"
         component={DetalleMedicos}
-        options={{ title: "Detalle Médico" }}
+        options={{ title: "Detalle Medico" }}
       />
     </Stack.Navigator>
   );

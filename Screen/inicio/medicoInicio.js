@@ -41,11 +41,11 @@ export default function MedicoInicio({ navigation }) {
   };
 
   const handleLogout = () => {
-    Alert.alert('Cerrar Sesión', '¿Estás seguro que quieres cerrar sesión?',
+    Alert.alert('Cerrar Sesion', '¿Estas seguro que quieres cerrar sesion?',
       [
         { text: 'Cancelar', style: 'cancel' },
         { 
-          text: 'Cerrar Sesión', 
+          text: 'Cerrar Sesion', 
           style: 'destructive',
           onPress: async () => {
             await AuthService.logout();
@@ -81,7 +81,7 @@ export default function MedicoInicio({ navigation }) {
           </View>
           <View>
             <Text style={styles.welcomeText}>¡Hola Doctor!</Text>
-            <Text style={styles.nameText}>{user?.name || 'Médico'}</Text>
+            <Text style={styles.nameText}>{user?.name || 'Medico'}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -96,7 +96,7 @@ export default function MedicoInicio({ navigation }) {
       }
     >
       <View style={styles.actionsContainer}>
-        <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
+        <Text style={styles.sectionTitle}>Acciones Rapidas</Text>
         <View style={styles.actionsGrid}>
           <TouchableOpacity
             style={styles.actionCard}
@@ -122,7 +122,7 @@ export default function MedicoInicio({ navigation }) {
           >
             <MaterialCommunityIcons name="account-group" size={40} color="#8E24AA" />
             <Text style={styles.actionTitle}>Mis Pacientes</Text>
-            <Text style={styles.actionDescription}>Ver historial médico</Text>
+            <Text style={styles.actionDescription}>Ver historial medico</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -131,7 +131,7 @@ export default function MedicoInicio({ navigation }) {
           >
             <MaterialCommunityIcons name="medical-bag" size={40} color="#FF5722" />
             <Text style={styles.actionTitle}>Mi Especialidad</Text>
-            <Text style={styles.actionDescription}>Información profesional</Text>
+            <Text style={styles.actionDescription}>Informacion profesional</Text>
           </TouchableOpacity>
         </View>
       </View>

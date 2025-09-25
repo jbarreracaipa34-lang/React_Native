@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://192.168.137.1:8000/api';
+const API_BASE_URL = 'http://192.168.1.11:8000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -73,7 +73,7 @@ class AuthService {
     console.log('Error en login:', error.response?.data || error.message);
     return {
       success: false,
-      message: error.response?.data?.message || 'Error al iniciar sesión',
+      message: error.response?.data?.message || 'Error al iniciar sesion',
       errors: error.response?.data?.errors || null
     };
   }
@@ -126,7 +126,7 @@ class AuthService {
       return { success: true, data: response.data };
     } catch (error) {
       if (error.response?.status === 401) await this.logout();
-      return { success: false, message: 'Token inválido' };
+      return { success: false, message: 'Token invalido' };
     }
   }
 
@@ -154,6 +154,16 @@ class AuthService {
   async crearPaciente(data) { return api.post('/crearPacientes', data); }
   async editarPaciente(id, data) { return api.put(`/editarPacientes/${id}`, data); }
   async eliminarPaciente(id) { return api.delete(`/eliminarPacientes/${id}`); }
+   async registrarPacienteConUserId(data) { 
+    try {
+      const response = await api.post('registrarPacienteConUserId', data);
+      console.log('Paciente registrado exitosamente:', response.data);
+      return response;
+    } catch (error) {
+      console.error('Error al registrar paciente:', error.response?.data || error.message);
+      throw error;
+    }
+  }
 
 async getCitasConMedicos() { return api.get('/citasConMedicos'); }
 async getCitasPendientes() { return api.get('/citasPendientes'); }

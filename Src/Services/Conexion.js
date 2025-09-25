@@ -1,7 +1,7 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_URL_BASE = "http://192.168.137.1:8000/api";
+const API_URL_BASE = "http://192.168.1.11:8000/api";
 
 const api = axios.create({
     baseURL: API_URL_BASE,
@@ -27,7 +27,7 @@ api.interceptors.request.use(
                 console.log('No hay token disponible para ruta privada');
             }
         } else {
-            console.log('Ruta pública, no se requiere token');
+            console.log('Ruta publica, no se requiere token');
         }
         
         return config;
@@ -53,7 +53,7 @@ api.interceptors.response.use(
             originalRequest._retry = true;
             await AsyncStorage.removeItem('userToken');
             await AsyncStorage.removeItem('userData');
-            console.log("Token inválido o expirado. Storage limpiado");
+            console.log("Token invalido o expirado. Storage limpiado");
             
             if (originalRequest?.navigation) {
                 originalRequest?.navigation.reset({

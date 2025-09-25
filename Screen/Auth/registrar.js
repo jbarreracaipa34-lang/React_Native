@@ -60,12 +60,6 @@ export default function Registrar({ navigation }) {
                 const userRole = result.data.user.role;
                 
                 switch (userRole) {
-                  case 'admin':
-                    navigation.reset({
-                      index: 0,
-                      routes: [{ name: 'AdminInicio' }]
-                    });
-                    break;
                   case 'medico':
                     navigation.reset({
                       index: 0,
@@ -90,7 +84,7 @@ export default function Registrar({ navigation }) {
         Alert.alert('Error', result.message || 'Error en el registro');
       }
     } catch (error) {
-      Alert.alert('Error', `Error de conexión: ${error.message}`);
+      Alert.alert('Error', `Error de conexion: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -115,7 +109,7 @@ export default function Registrar({ navigation }) {
         </View>
 
         <Text style={styles.title}>Crear Cuenta</Text>
-        <Text style={styles.subtitle}>Completa la información para registrarte</Text>
+        <Text style={styles.subtitle}>Completa la informacion para registrarte</Text>
 
         <View style={styles.formContainer}>
           
@@ -134,7 +128,7 @@ export default function Registrar({ navigation }) {
             <Ionicons name="mail-outline" size={20} color="#6B7280" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Correo electrónico"
+              placeholder="Correo electronico"
               value={formData.email}
               onChangeText={(value) => handleInputChange('email', value)}
               keyboardType="email-address"
@@ -152,11 +146,10 @@ export default function Registrar({ navigation }) {
                 onValueChange={(value) => handleInputChange('role', value)}
               >
                 <Picker.Item label="Paciente" value="paciente" />
-                <Picker.Item label="Médico" value="medico" />
-                <Picker.Item label="Administrador" value="admin" />
+                <Picker.Item label="Medico" value="medico" />
               </Picker>
             </View>
-          </View>
+          </View>  
 
           <View style={styles.inputContainer}>
             <Ionicons name="lock-closed-outline" size={20} color="#6B7280" style={styles.inputIcon} />
@@ -224,7 +217,7 @@ export default function Registrar({ navigation }) {
             style={styles.loginButton} 
             onPress={() => navigation.navigate('IniciarSesion')}
           >
-            <Text style={styles.loginButtonText}>¿Ya tienes cuenta? Inicia sesión</Text>
+            <Text style={styles.loginButtonText}>¿Ya tienes cuenta? Inicia sesion</Text>
           </TouchableOpacity>
         </View>
 

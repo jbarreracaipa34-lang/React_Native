@@ -117,7 +117,7 @@ export default function ListarCitas({ navigation }) {
             ...cita,
             estado: cita.estado || 'Pendiente',
             paciente_nombre: cita.paciente_nombre || 'Paciente',
-            medico_nombre: cita.medico_nombre || 'Médico',
+            medico_nombre: cita.medico_nombre || 'Medico',
             medico_apellido: cita.medico_apellido || '',
             paciente_apellido: cita.paciente_apellido || ''
           };
@@ -410,11 +410,11 @@ export default function ListarCitas({ navigation }) {
   const getTituloScreen = () => {
     switch (user?.role) {
       case 'admin':
-        return 'Gestión de Citas';
+        return 'Gestion de Citas';
       case 'medico':
         return 'Mis Consultas';
       case 'paciente':
-        return 'Mis Citas Médicas';
+        return 'Mis Citas Medicas';
       default:
         return 'Citas';
     }
@@ -433,22 +433,13 @@ export default function ListarCitas({ navigation }) {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2196F3" />
-        <Text style={styles.loadingText}>Cargando citas...</Text>
-      </View>
-    );
-  }
-
   if (!user) {
     return (
       <View style={styles.loadingContainer}>
         <MaterialCommunityIcons name="account-alert" size={64} color="#CCC" />
-        <Text style={styles.emptyTitle}>Error de autenticación</Text>
+        <Text style={styles.emptyTitle}>Error de autenticacion</Text>
         <Text style={styles.emptyText}>
-          No se pudo identificar el usuario. Por favor, inicia sesión nuevamente.
+          No se pudo identificar el usuario. Por favor, inicia sesion nuevamente.
         </Text>
         <TouchableOpacity 
           style={styles.emptyButton}
@@ -475,10 +466,10 @@ export default function ListarCitas({ navigation }) {
               <Ionicons name="medical" size={24} color="#2196F3" />
             </View>
             <View>
-              <Text style={styles.appName}>Citas Médicas</Text>
+              <Text style={styles.appName}>Citas Medicas</Text>
               <Text style={styles.appSubtitle}>
-                {user?.role === 'admin' ? 'Panel de administración' :
-                 user?.role === 'medico' ? 'Portal médico' : 'Tu salud en tus manos'}
+                {user?.role === 'admin' ? 'Panel de administracion' :
+                 user?.role === 'medico' ? 'Portal medico' : 'Tu salud en tus manos'}
               </Text>
             </View>
           </View>
@@ -554,7 +545,7 @@ export default function ListarCitas({ navigation }) {
                 Lista de {user?.role === 'medico' ? 'Consultas' : 'Citas'} ({filteredCitas.length})
               </Text>
               <Text style={styles.lastUpdate}>
-                Última actualización: {new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                ultima actualizacion: {new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
               </Text>
             </View>
             {filteredCitas.map((cita, index) => renderCitaItem(cita, index))}

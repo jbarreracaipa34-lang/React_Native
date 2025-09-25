@@ -59,7 +59,7 @@ export default function ListarMedicos({ navigation }) {
     } catch (error) {
       console.error('Error loading medicos:', error);
       setMedicos([]);
-      Alert.alert('Error', 'No se pudieron cargar los médicos: ' + error.message);
+      Alert.alert('Error', 'No se pudieron cargar los medicos: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -92,12 +92,12 @@ export default function ListarMedicos({ navigation }) {
 
   const handleEditarMedico = (medico) => {
     if (user?.role === 'paciente') {
-      Alert.alert('Acceso denegado', 'Los pacientes no pueden editar información de médicos');
+      Alert.alert('Acceso denegado', 'Los pacientes no pueden editar informacion de medicos');
       return;
     }
 
     if (user?.role === 'medico' && String(medico.user_id) !== String(user.id)) {
-      Alert.alert('Acceso denegado', 'No puedes modificar datos de otros médicos');
+      Alert.alert('Acceso denegado', 'No puedes modificar datos de otros medicos');
       return;
     }
 
@@ -106,12 +106,12 @@ export default function ListarMedicos({ navigation }) {
 
   const handleEliminarMedico = (medico) => {
     if (user?.role === 'paciente') {
-      Alert.alert('Acceso denegado', 'Los pacientes no pueden eliminar médicos');
+      Alert.alert('Acceso denegado', 'Los pacientes no pueden eliminar medicos');
       return;
     }
 
     if (user?.role === 'medico') {
-      Alert.alert('Acceso denegado', 'No puedes modificar datos de otros médicos');
+      Alert.alert('Acceso denegado', 'No puedes modificar datos de otros medicos');
       return;
     }
 
@@ -220,11 +220,11 @@ export default function ListarMedicos({ navigation }) {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <MaterialCommunityIcons name="doctor" size={64} color="#CCC" />
-      <Text style={styles.emptyTitle}>No hay médicos</Text>
+      <Text style={styles.emptyTitle}>No hay medicos</Text>
       <Text style={styles.emptyText}>
         {filtroEspecialidad === 'todas'
-          ? 'No hay médicos registrados'
-          : `No hay médicos de ${filtroEspecialidad}`
+          ? 'No hay medicos registrados'
+          : `No hay medicos de ${filtroEspecialidad}`
         }
       </Text>
       {user?.role === 'admin' && (
@@ -232,20 +232,11 @@ export default function ListarMedicos({ navigation }) {
           style={styles.emptyButton}
           onPress={() => navigation.navigate('Crear_EditarMedicos')}
         >
-          <Text style={styles.emptyButtonText}>Agregar primer médico</Text>
+          <Text style={styles.emptyButtonText}>Agregar primer medico</Text>
         </TouchableOpacity>
       )}
     </View>
-  );
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2196F3" />
-        <Text style={styles.loadingText}>Cargando médicos...</Text>
-      </View>
-    );
-  }
+  );  
 
   return (
     <View style={styles.container}>
@@ -268,7 +259,7 @@ export default function ListarMedicos({ navigation }) {
         </View>
 
         <View style={styles.titleContainer}>
-          <Text style={styles.screenTitle}>Médicos</Text>
+          <Text style={styles.screenTitle}>Medicos</Text>
           {user?.role === 'admin' && (
             <TouchableOpacity
               style={styles.newButton}
@@ -296,7 +287,7 @@ export default function ListarMedicos({ navigation }) {
           <Text style={styles.statNumber}>
             {medicos.filter(m => m.telefono && m.telefono !== 'No disponible').length}
           </Text>
-          <Text style={styles.statLabel}>Con Teléfono</Text>
+          <Text style={styles.statLabel}>Con Telefono</Text>
         </View>
       </View>
 
@@ -308,7 +299,7 @@ export default function ListarMedicos({ navigation }) {
         {filteredMedicos.length > 0 ? (
           <>
             <View style={styles.listHeader}>
-              <Text style={styles.listTitle}>Lista de Médicos</Text>
+              <Text style={styles.listTitle}>Lista de Medicos</Text>
             </View>
             {filteredMedicos.map((medico, index) => renderMedicoItem(medico, index))}
           </>

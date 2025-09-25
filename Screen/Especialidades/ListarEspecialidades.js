@@ -49,7 +49,7 @@ export default function ListarEspecialidades({ navigation }) {
             especialidadesMap.set(especialidadId, {
               id: especialidadId,
               nombre: item.nombre,
-              descripcion: item.descripcion || 'Sin descripción',
+              descripcion: item.descripcion || 'Sin descripcion',
               medicos: []
             });
           }
@@ -184,12 +184,12 @@ export default function ListarEspecialidades({ navigation }) {
           <Text style={styles.detallesTitle}>Detalles de la especialidad:</Text>
           
           <View style={styles.detalleItem}>
-            <Text style={styles.detalleLabel}>Descripción:</Text>
+            <Text style={styles.detalleLabel}>Descripcion:</Text>
             <Text style={styles.detalleValue}>{especialidad.descripcion}</Text>
           </View>
 
           <View style={styles.detalleItem}>
-            <Text style={styles.detalleLabel}>Total de médicos:</Text>
+            <Text style={styles.detalleLabel}>Total de medicos:</Text>
             <Text style={styles.detalleValue}>{especialidad.totalMedicos}</Text>
           </View>
 
@@ -259,7 +259,7 @@ export default function ListarEspecialidades({ navigation }) {
                 {especialidad.descripcion}
               </Text>
               <Text style={styles.especialidadDate}>
-                {especialidad.totalMedicos} médico{especialidad.totalMedicos !== 1 ? 's' : ''} asociado{especialidad.totalMedicos !== 1 ? 's' : ''}
+                {especialidad.totalMedicos} medico{especialidad.totalMedicos !== 1 ? 's' : ''} asociado{especialidad.totalMedicos !== 1 ? 's' : ''}
               </Text>
               
               <View style={styles.estadoContainer}>
@@ -282,7 +282,7 @@ export default function ListarEspecialidades({ navigation }) {
                 <View style={styles.statItem}>
                   <Ionicons name="people-outline" size={16} color="#666" />
                   <Text style={styles.statValue}>{especialidad.totalMedicos || 0}</Text>
-                  <Text style={styles.statLabel}>médicos</Text>
+                  <Text style={styles.statLabel}>medicos</Text>
                 </View>
                 <View style={styles.statItem}>
                   <Ionicons name="calendar-outline" size={16} color="#666" />
@@ -375,13 +375,13 @@ export default function ListarEspecialidades({ navigation }) {
           <Text style={[styles.statNumber, { color: '#4CAF50' }]}>
             {estadisticas.conMedicos}
           </Text>
-          <Text style={styles.statLabel}>Con Médicos</Text>
+          <Text style={styles.statLabel}>Con Medicos</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={[styles.statNumber, { color: '#FF9800' }]}>
             {estadisticas.totalMedicos}
           </Text>
-          <Text style={styles.statLabel}>Médicos</Text>
+          <Text style={styles.statLabel}>Medicos</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={[styles.statNumber, { color: '#2196F3' }]}>

@@ -21,7 +21,7 @@ function PantallaInicio({ navigation }) {
           style={styles.botonHeader} 
           onPress={() => navigation.navigate('IniciarSesion')}
         >
-          <Text style={styles.textoBotonHeader}>Iniciar Sesión</Text>
+          <Text style={styles.textoBotonHeader}>Iniciar Sesion</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.botonHeader} 
@@ -38,42 +38,42 @@ function PantallaInicio({ navigation }) {
             <Text style={styles.logoTexto}>🏥</Text>
           </View>
           
-          <Text style={styles.nombreApp}>Citas Médicas</Text>
+          <Text style={styles.nombreApp}>Citas Medicas</Text>
           <Text style={styles.sloganApp}>Tu salud en tus manos</Text>
         </View>
 
         <View style={styles.cajaBienvenida}>
           <Text style={styles.textoBienvenida}>¡Bienvenido!</Text>
           <Text style={styles.descripcion}>
-            Una plataforma completa para gestionar tu atención médica de forma eficiente y segura.
+            Una plataforma completa para gestionar tu atencion medica de forma eficiente y segura.
           </Text>
         </View>
 
         <View style={styles.seccionCaracteristicas}>
-          <Text style={styles.tituloSeccion}>¿Qué puedes hacer?</Text>
+          <Text style={styles.tituloSeccion}>¿Que puedes hacer?</Text>
           
           <View style={styles.gridCaracteristicas}>
             <View style={styles.cartaCaracteristica}>
               <Ionicons name="calendar-outline" size={32} color="#1E88E5" />
               <Text style={styles.tituloCaracteristica}>Programar Citas</Text>
               <Text style={styles.descripcionCaracteristica}>
-                Agenda tus citas médicas de manera rápida y sencilla
+                Agenda tus citas medicas de manera rapida y sencilla
               </Text>
             </View>
 
             <View style={styles.cartaCaracteristica}>
               <MaterialCommunityIcons name="doctor" size={32} color="#4CAF50" />
-              <Text style={styles.tituloCaracteristica}>Médicos Especializados</Text>
+              <Text style={styles.tituloCaracteristica}>Medicos Especializados</Text>
               <Text style={styles.descripcionCaracteristica}>
-                Encuentra médicos por especialidad y revisa sus perfiles
+                Encuentra medicos por especialidad y revisa sus perfiles
               </Text>
             </View>
 
             <View style={styles.cartaCaracteristica}>
               <Ionicons name="people-outline" size={32} color="#8E24AA" />
-              <Text style={styles.tituloCaracteristica}>Gestión de Pacientes</Text>
+              <Text style={styles.tituloCaracteristica}>Gestion de Pacientes</Text>
               <Text style={styles.descripcionCaracteristica}>
-                Administra la información de pacientes de forma segura
+                Administra la informacion de pacientes de forma segura
               </Text>
             </View>
 
@@ -81,7 +81,7 @@ function PantallaInicio({ navigation }) {
               <Ionicons name="time-outline" size={32} color="#dac407ff" />
               <Text style={styles.tituloCaracteristica}>Horarios Disponibles</Text>
               <Text style={styles.descripcionCaracteristica}>
-                Consulta los horarios disponibles de cada médico
+                Consulta los horarios disponibles de cada medico
               </Text>
             </View>
           </View>
@@ -93,7 +93,7 @@ function PantallaInicio({ navigation }) {
           <View style={styles.filaEstadisticas}>
             <View style={styles.estadistica}>
               <Text style={styles.numeroEstadistica}>500+</Text>
-              <Text style={styles.labelEstadistica}>Médicos Registrados</Text>
+              <Text style={styles.labelEstadistica}>Medicos Registrados</Text>
             </View>
             
             <View style={styles.estadistica}>
@@ -111,7 +111,7 @@ function PantallaInicio({ navigation }) {
         <View style={styles.seccionCTA}>
           <Text style={styles.tituloCTA}>¿Listo para comenzar?</Text>
           <Text style={styles.descripcionCTA}>
-            Únete a miles de usuarios que ya confían en nuestra plataforma
+            unete a miles de usuarios que ya confian en nuestra plataforma
           </Text>
           
           <View style={styles.botonesCTA}>
@@ -150,7 +150,7 @@ export default function InicioStack() {
       <Stack.Screen 
         name="IniciarSesion" 
         component={IniciarSession} 
-        options={{ title: 'Iniciar Sesión' }}
+        options={{ title: 'Iniciar Sesion' }}
       />
       <Stack.Screen 
         name="Registrar" 
