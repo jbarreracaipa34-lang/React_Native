@@ -41,7 +41,6 @@ export default function ListarHorariosDisponibles({ navigation }) {
       if (horariosResult && horariosResult.data && Array.isArray(horariosResult.data)) {
         const horariosData = horariosResult.data;
 
-        // Agrupar horarios por medico
         const medicosMap = new Map();
 
         horariosData.forEach(item => {
@@ -63,11 +62,10 @@ export default function ListarHorariosDisponibles({ navigation }) {
         });
 
         const horariosArray = Array.from(medicosMap.entries()).map(([key, value]) => ({
-          id: key, // Usamos el nombre completo como ID unico
+          id: key,
           ...value
         }));
 
-        // Ordenar horarios por dia de la semana
         horariosArray.forEach(medico => {
           medico.horarios.sort((a, b) => {
             const diasOrden = {
@@ -107,6 +105,10 @@ export default function ListarHorariosDisponibles({ navigation }) {
 
   const handleCrearCita = (medico) => {
     navigation.navigate('Crear_EditarCitas', { medico: medico });
+  };
+
+  const handleCrearHorarios = (medico = null) => {
+    navigation.navigate('Crear_EditarHorariosDisponibles', { medico: medico });
   };
 
   const handleEditarHorarios = (medico) => {
@@ -318,7 +320,7 @@ export default function ListarHorariosDisponibles({ navigation }) {
       {(user?.role === 'medico' || user?.role === 'admin') && (
         <TouchableOpacity
           style={styles.emptyButton}
-          onPress={() => navigation.navigate('Crear_EditarHorariosDisponibles')}
+          onPress={() => handleCrearHorarios()}
         >
           <Text style={styles.emptyButtonText}>Agregar horarios</Text>
         </TouchableOpacity>
@@ -356,7 +358,7 @@ export default function ListarHorariosDisponibles({ navigation }) {
           {(user?.role === 'medico' || user?.role === 'admin') && (
             <TouchableOpacity
               style={styles.newButton}
-              onPress={() => navigation.navigate('Crear_EditarhorariosDisponibles')}
+              onPress={() => handleCrearHorarios()}
             >
               <Ionicons name="add" size={20} color="#FFF" />
               <Text style={styles.newButtonText}>Nuevo</Text>

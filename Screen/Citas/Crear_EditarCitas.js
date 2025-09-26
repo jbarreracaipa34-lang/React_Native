@@ -28,6 +28,12 @@ export default function Crear_EditarCita({ navigation, route }) {
     loadInitialData();
   }, []);
 
+  useEffect(() => {
+    if (user && !isEditing) {
+      preseleccionarDatosPorRol();
+    }
+  }, [user, pacientes, medicos, isEditing]);
+
   const loadInitialData = async () => {
     try {
       setLoadingData(true);
@@ -60,55 +66,128 @@ export default function Crear_EditarCita({ navigation, route }) {
 
   const loadPacientes = async () => {
     try {
-      const response = await AuthService.getPacientes();
-      console.log('Respuesta pacientes:', response);
+      if (user?.role === 'paciente') {
+        setPacientes([{
+          id: user.id,
+          nombre: user.nombre || user.name,
+          apellido: user.apellido || '',
+          numeroDocumento: user.documento || user.numeroDocumento || 'N/A'
+        }]);
+        return;
+      }
+      
+      const response = await AuthService.getPacientes();      
       if (response && response.data) {
         setPacientes(response.data);
-        console.log('Pacientes cargados:', response.data);
       } else if (response && Array.isArray(response)) {
         setPacientes(response);
-        console.log('Pacientes cargados (array directo):', response);
       }
     } catch (error) {
       console.error('Error cargando pacientes:', error);
+      
+      if (user?.role === 'paciente' && error.response?.status === 403) {
+        setPacientes([{
+          id: user.id,
+          nombre: user.nombre || user.name,
+          apellido: user.apellido || '',
+          numeroDocumento: user.documento || user.numeroDocumento || 'N/A'
+        }]);
+        return;
+      }
+      
       Alert.alert('Error', 'No se pudieron cargar los pacientes');
     }
   };
 
   const loadMedicos = async () => {
     try {
+      if (user?.role === 'medico') {
+        setMedicos([{
+          id: user.id,
+          nombre: user.nombre || user.name,
+          apellido: user.apellido || '',
+          especialidad: user.especialidad || 'General'
+        }]);
+        return;
+      }
+
       const response = await AuthService.getMedicos();
-      console.log('Respuesta médicos:', response);
+      
       if (response && response.data) {
         setMedicos(response.data);
-        console.log('Médicos cargados:', response.data);
       } else if (response && Array.isArray(response)) {
         setMedicos(response);
-        console.log('Médicos cargados (array directo):', response);
       }
     } catch (error) {
       console.error('Error cargando médicos:', error);
+      
+      if (user?.role === 'medico' && error.response?.status === 403) {
+        setMedicos([{
+          id: user.id,
+          nombre: user.nombre || user.name,
+          apellido: user.apellido || '',
+          especialidad: user.especialidad || 'General'
+        }]);
+        return;
+      }
+      
       Alert.alert('Error', 'No se pudieron cargar los médicos');
     }
   };
 
   const cargarDatosCita = () => {
     if (citaAEditar) {
+      let horaFormateada = citaAEditar.horaCita;
+      if (horaFormateada && horaFormateada.includes(':')) {
+        const partesHora = horaFormateada.split(':');
+        horaFormateada = `${partesHora[0]}:${partesHora[1]}`;
+      }
+
       setFormData({
         pacientes_id: citaAEditar.pacientes_id || '',
         medicos_id: citaAEditar.medicos_id || '',
         fechaCita: citaAEditar.fechaCita || '',
-        horaCita: citaAEditar.horaCita || '',
+        horaCita: horaFormateada || '',
         estado: citaAEditar.estado || 'pendiente',
         observaciones: citaAEditar.observaciones || ''
       });
     }
   };
 
+  const preseleccionarDatosPorRol = () => {
+    if (!user) return;
+    
+    setFormData(prev => {
+      const newFormData = { ...prev };
+      
+      if (user.role === 'paciente' && pacientes.length > 0) {
+        newFormData.pacientes_id = user.id;
+      }
+      
+      if (user.role === 'medico' && medicos.length > 0) {
+        newFormData.medicos_id = user.id;
+      }
+      
+      return newFormData;
+    });
+  };
+
   const handleInputChange = (field, value) => {
+    if (isEditing && user?.role === 'medico') {
+      if (field !== 'observaciones' && field !== 'estado') {
+        return;
+      }
+    }
+
+    if (isEditing && user?.role === 'paciente') {
+      if (field === 'medicos_id' || field === 'estado') {
+        return;
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      [field]: value || ''
     }));
     
     if (errors[field]) {
@@ -122,7 +201,7 @@ export default function Crear_EditarCita({ navigation, route }) {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.pacientes_id) {
+    if (user?.role !== 'admin' && !formData.pacientes_id) {
       newErrors.pacientes_id = 'El paciente es obligatorio';
     }
 
@@ -143,7 +222,7 @@ export default function Crear_EditarCita({ navigation, route }) {
         
         if (isNaN(date.getTime())) {
           newErrors.fechaCita = 'Fecha inválida';
-        } else if (date < today) {
+        } else if (date < today && !isEditing) {
           newErrors.fechaCita = 'La fecha no puede ser anterior a hoy';
         }
       }
@@ -161,7 +240,7 @@ export default function Crear_EditarCita({ navigation, route }) {
     if (!formData.estado) {
       newErrors.estado = 'El estado es obligatorio';
     }
-
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -179,7 +258,6 @@ export default function Crear_EditarCita({ navigation, route }) {
 
     try {
       const tokenVerification = await AuthService.verifyToken();
-      console.log('Verificación de token:', tokenVerification);
       
       if (!tokenVerification.success) {
         Alert.alert('Error', 'Tu sesión ha expirado. Por favor inicia sesión nuevamente.');
@@ -194,21 +272,30 @@ export default function Crear_EditarCita({ navigation, route }) {
       setLoading(true);
 
       const citaData = {
-        ...formData
+        pacientes_id: parseInt(formData.pacientes_id) || null,
+        medicos_id: parseInt(formData.medicos_id),
+        fechaCita: formData.fechaCita.trim(),
+        horaCita: formData.horaCita.trim(),
+        estado: formData.estado.trim()
       };
+
+      if (formData.observaciones && formData.observaciones.trim()) {
+        citaData.observaciones = formData.observaciones.trim();
+      }
+
+      if (!isEditing) {
+        citaData.user_id = user.id;
+      }
 
       let response;
       if (isEditing) {
-        const citaDataWithUserId = {
-          ...formData,
-          user_id: user.id
-        };
-        response = await AuthService.editarCita(citaAEditar.id, citaDataWithUserId);
+        response = await AuthService.editarCita(citaAEditar.id, citaData);
       } else {
-        response = await AuthService.registrarCitaConUserId(citaData);
+        response = await AuthService.crearCita(citaData);
       }
 
-      if (response && response.data) {
+
+      if (response && (response.data || response.success)) {
         Alert.alert(
           'Éxito',
           isEditing ? 'Cita actualizada correctamente' : 'Cita creada correctamente',
@@ -220,9 +307,9 @@ export default function Crear_EditarCita({ navigation, route }) {
           ]
         );
       } else {
-        throw new Error(response?.response?.data?.message || 'Error al procesar la solicitud');
+        throw new Error('Respuesta inesperada del servidor');
       }
-    } catch (error) {
+    } catch (error) {      
       let errorMessage = 'Error desconocido al guardar la cita';
       
       if (error.response) {
@@ -238,10 +325,23 @@ export default function Crear_EditarCita({ navigation, route }) {
             break;
           case 422:
             if (data.errors) {
-              const firstError = Object.values(data.errors)[0];
-              errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
+              
+              const errorsList = Object.entries(data.errors).map(([field, errors]) => {
+                const errorArray = Array.isArray(errors) ? errors : [errors];
+                return `• ${field}: ${errorArray.join(', ')}`;
+              }).join('\n');
+              
+              errorMessage = `Errores de validación:\n${errorsList}`;
+              
+              if (Object.keys(data.errors).length === 1) {
+                const firstError = Object.values(data.errors)[0];
+                const errorText = Array.isArray(firstError) ? firstError[0] : firstError;
+                errorMessage = `Error de validación: ${errorText}`;
+              }
+            } else if (data.message) {
+              errorMessage = data.message;
             } else {
-              errorMessage = data.message || 'Datos inválidos';
+              errorMessage = 'Datos inválidos - revisa los campos del formulario';
             }
             break;
           case 409:
@@ -249,7 +349,7 @@ export default function Crear_EditarCita({ navigation, route }) {
             break;
           case 500:
             if (data.message && data.message.includes("user_id")) {
-              errorMessage = 'Error interno del servidor. Por favor contacta al administrador.';
+              errorMessage = 'Error interno del servidor relacionado con usuario. Por favor contacta al administrador.';
             } else {
               errorMessage = data.message || `Error del servidor (${status})`;
             }
@@ -257,6 +357,8 @@ export default function Crear_EditarCita({ navigation, route }) {
           default:
             errorMessage = data.message || `Error del servidor (${status})`;
         }
+      } else if (error.message) {
+        errorMessage = error.message;
       }
       
       Alert.alert('Error', errorMessage);
@@ -290,6 +392,38 @@ export default function Crear_EditarCita({ navigation, route }) {
     return formatted;
   };
 
+  const isFieldDisabled = (field) => {
+    if (!isEditing && user?.role === 'paciente' && field === 'pacientes_id') {
+      return true;
+    }
+    
+    if (!isEditing && user?.role === 'medico' && field === 'medicos_id') {
+      return true;
+    }
+    
+    if (isEditing && user?.role === 'medico') {
+      return field !== 'observaciones' && field !== 'estado';
+    }
+    
+    if (isEditing && user?.role === 'paciente') {
+      return field === 'medicos_id' || field === 'estado';
+    }
+    
+    return false;
+  };
+
+  const shouldShowField = (field) => {
+    if (user?.role === 'paciente' && field === 'pacientes_id') {
+      return false;
+    }
+    
+    if (user?.role === 'medico' && field === 'medicos_id') {
+      return false;
+    }
+    
+    return true;
+  };
+
   const renderInput = (
     label,
     field,
@@ -298,67 +432,92 @@ export default function Crear_EditarCita({ navigation, route }) {
     multiline = false,
     maxLength = null,
     required = false
-  ) => (
-    <View style={styles.inputContainer}>
-      <Text style={styles.inputLabel}>
-        {label}
-        {required && (
-          <Text style={styles.required}> *</Text>
-        )}
-      </Text>
-      <TextInput
-        style={[
-          styles.textInput,
-          multiline && styles.textInputMultiline,
-          errors[field] && styles.inputError
-        ]}
-        value={formData[field]}
-        onChangeText={(value) => {
-          if (field === 'fechaCita') {
-            handleInputChange(field, formatDateInput(value));
-          } else if (field === 'horaCita') {
-            handleInputChange(field, formatTimeInput(value));
-          } else {
-            handleInputChange(field, value);
-          }
-        }}
-        placeholder={placeholder}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        numberOfLines={multiline ? 3 : 1}
-        maxLength={maxLength}
-        autoCapitalize='none'
-        autoCorrect={false}
-      />
-      {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
-    </View>
-  );
-
-  const renderPicker = (label, field, options, required = false) => (
-    <View style={styles.inputContainer}>
-      <Text style={styles.inputLabel}>
-        {label}
-        {required && <Text style={styles.required}> *</Text>}
-      </Text>
-      <View style={[styles.pickerContainer, errors[field] && styles.inputError]}>
-        <Picker
-          selectedValue={formData[field]}
-          onValueChange={(value) => handleInputChange(field, value)}
-          style={styles.picker}
-        >
-          <Picker.Item label={`Seleccionar ${label.toLowerCase()}`} value="" />
-          {options.map((option) => (
-            <Picker.Item
-              key={option.value}
-              label={option.label}
-              value={option.value}
-            />
-          ))}
-        </Picker>
+  ) => {
+    const disabled = isFieldDisabled(field);
+    
+    return (
+      <View style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>
+          {label}
+          {required && (
+            <Text style={styles.required}> *</Text>
+          )}
+          {disabled && (
+            <Text style={styles.disabledText}> (Solo lectura)</Text>
+          )}
+        </Text>
+        <TextInput
+          style={[
+            styles.textInput,
+            multiline && styles.textInputMultiline,
+            errors[field] && styles.inputError,
+            disabled && styles.inputDisabled
+          ]}
+          value={formData[field] || ''}
+          onChangeText={(value) => {
+            if (field === 'fechaCita') {
+              handleInputChange(field, formatDateInput(value));
+            } else if (field === 'horaCita') {
+              handleInputChange(field, formatTimeInput(value));
+            } else {
+              handleInputChange(field, value);
+            }
+          }}
+          placeholder={placeholder}
+          keyboardType={keyboardType}
+          multiline={multiline}
+          numberOfLines={multiline ? 3 : 1}
+          maxLength={maxLength}
+          autoCapitalize='none'
+          autoCorrect={false}
+          editable={!disabled}
+        />
+        {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
       </View>
-      {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
-    </View>
-  );
+    );
+  };
+
+  const renderPicker = (label, field, options, required = false) => {
+    if (!shouldShowField(field)) {
+      return null;
+    }
+    
+    const disabled = isFieldDisabled(field);
+    
+    return (
+      <View style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>
+          {label}
+          {required && <Text style={styles.required}> *</Text>}
+          {disabled && (
+            <Text style={styles.disabledText}> (Solo lectura)</Text>
+          )}
+        </Text>
+        <View style={[
+          styles.pickerContainer, 
+          errors[field] && styles.inputError,
+          disabled && styles.inputDisabled
+        ]}>
+          <Picker
+            selectedValue={formData[field]}
+            onValueChange={(value) => handleInputChange(field, value)}
+            style={[styles.picker, disabled && styles.pickerDisabled]}
+            enabled={!disabled}
+          >
+            <Picker.Item label={`Seleccionar ${label.toLowerCase()}`} value="" />
+            {options.map((option) => (
+              <Picker.Item
+                key={option.value}
+                label={option.label}
+                value={option.value}
+              />
+            ))}
+          </Picker>
+        </View>
+        {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+      </View>
+    );
+  };
 
   return (
     <KeyboardAvoidingView
@@ -389,6 +548,16 @@ export default function Crear_EditarCita({ navigation, route }) {
         contentContainerStyle={styles.formContainer}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.infoContainer}>
+          <Ionicons name="information-circle" size={20} color="#2196F3" />
+          <Text style={styles.infoText}>
+            {user?.role === 'medico' && 'Como médico, esta cita será asignada automáticamente a ti.'}
+            {user?.role === 'paciente' && 'Como paciente, esta cita será creada automáticamente para ti.'}
+            {user?.role === 'admin' && 'Como administrador, puedes asignar cualquier médico y paciente (opcional). Las observaciones son opcionales.'}
+            {isEditing && user?.role === 'medico' && ' Solo puedes editar las observaciones y el estado de la cita.'}
+            {isEditing && user?.role === 'paciente' && ' No puedes cambiar el médico ni el estado de la cita.'}
+          </Text>
+        </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -403,7 +572,7 @@ export default function Crear_EditarCita({ navigation, route }) {
               label: `${paciente.nombre} ${paciente.apellido} (${paciente.numeroDocumento || paciente.documento})`,
               value: paciente.id
             })),
-            true
+            user?.role !== 'admin'
           )}
 
           {renderPicker(
@@ -441,7 +610,7 @@ export default function Crear_EditarCita({ navigation, route }) {
             'estado',
             [
               { label: 'Pendiente', value: 'pendiente' },
-              { label: 'Completa', value: 'completa' },
+              { label: 'Completada', value: 'completada' },
               { label: 'Cancelada', value: 'cancelada' }
             ],
             true
@@ -451,10 +620,25 @@ export default function Crear_EditarCita({ navigation, route }) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="document-text-outline" size={20} color="#2196F3" />
-            <Text style={styles.sectionTitle}>Observaciones</Text>
+            <Text style={styles.sectionTitle}>
+              Observaciones
+              {(user?.role === 'admin' || user?.role === 'medico') && (
+                <Text style={styles.optionalText}> (Opcional)</Text>
+              )}
+            </Text>
           </View>
 
-          {renderInput('Observaciones', 'observaciones', 'Ingrese observaciones adicionales...', 'default', true)}
+          {renderInput(
+            'Observaciones', 
+            'observaciones', 
+            user?.role === 'admin' 
+              ? 'Observaciones adicionales (opcional)...' 
+              : user?.role === 'medico' 
+              ? 'Notas médicas o instrucciones (opcional)...'
+              : 'Ingrese observaciones adicionales...', 
+            'default', 
+            true
+          )}
         </View>
 
         <View style={styles.actionButtons}>
@@ -542,6 +726,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
   },
+  infoContainer: {
+    backgroundColor: '#E3F2FD',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
+  },
+  infoText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#1976D2',
+    flex: 1,
+  },
   section: {
     backgroundColor: '#FFF',
     borderRadius: 12,
@@ -567,6 +767,11 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: 8,
   },
+  optionalText: {
+    fontSize: 14,
+    color: '#4CAF50',
+    fontWeight: '500',
+  },
   inputContainer: {
     marginBottom: 16,
   },
@@ -578,6 +783,11 @@ const styles = StyleSheet.create({
   },
   required: {
     color: '#F44336',
+  },
+  disabledText: {
+    color: '#999',
+    fontStyle: 'italic',
+    fontSize: 12,
   },
   textInput: {
     borderWidth: 1,
@@ -593,6 +803,10 @@ const styles = StyleSheet.create({
     height: 80,
     textAlignVertical: 'top',
   },
+  inputDisabled: {
+    backgroundColor: '#F5F5F5',
+    color: '#999',
+  },
   pickerContainer: {
     borderWidth: 1,
     borderColor: '#E0E0E0',
@@ -603,6 +817,10 @@ const styles = StyleSheet.create({
     height: 50,
     color: '#333',
   },
+  pickerDisabled: {
+    backgroundColor: '#F5F5F5',
+    color: '#999',
+  },
   inputError: {
     borderColor: '#F44336',
   },
@@ -610,47 +828,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#F44336',
     marginTop: 4,
-  },
-  userInfoContainer: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  userInfoText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-  },
-  roleChip: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  roleText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  loadingUserContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-  },
-  loadingUserText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#666',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -692,5 +869,5 @@ const styles = StyleSheet.create({
   },
   footerSpace: {
     height: 40,
-  },
+  }
 });

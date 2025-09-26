@@ -204,7 +204,6 @@ export default function Crear_EditarMedicos({ navigation, route }) {
     try {
       setLoading(true);
 
-      // Solo enviar los campos que existen en la tabla medicos
       const medicoData = {
         nombre: formData.nombre,
         apellido: formData.apellido,
@@ -214,7 +213,6 @@ export default function Crear_EditarMedicos({ navigation, route }) {
         especialidad_id: formData.especialidad_id || null
       };
 
-      console.log('Datos a enviar:', medicoData); // Para debugging
 
       let response;
       if (isEditing) {
@@ -223,7 +221,6 @@ export default function Crear_EditarMedicos({ navigation, route }) {
         response = await AuthService.crearMedico(medicoData);
       }
 
-      console.log('Respuesta del servidor:', response); // Para debugging
 
       if (response && (response.data || response.success)) {
         Alert.alert(
@@ -237,18 +234,16 @@ export default function Crear_EditarMedicos({ navigation, route }) {
           ]
         );
       } else {
-        console.log('Respuesta inesperada:', response);
         throw new Error('Respuesta inesperada del servidor');
       }
     } catch (error) {
-      console.error('Error completo:', error); // Para debugging
-      console.error('Error response:', error.response); // Para debugging
+      console.error('Error completo:', error); 
+      console.error('Error response:', error.response);
       
       let errorMessage = 'Error desconocido al guardar el médico';
       
       if (error.response) {
         const { status, data } = error.response;
-        console.log('Status:', status, 'Data:', data); // Para debugging
         
         switch (status) {
           case 403:
@@ -282,7 +277,6 @@ export default function Crear_EditarMedicos({ navigation, route }) {
       } else if (error.message) {
         errorMessage = error.message;
       } else {
-        // Si no hay información específica del error
         errorMessage = `Error de conexión o respuesta inesperada. Detalles: ${JSON.stringify(error)}`;
       }
       
