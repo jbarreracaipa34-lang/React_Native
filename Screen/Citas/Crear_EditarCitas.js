@@ -11,6 +11,7 @@ export default function Crear_EditarCita({ navigation, route }) {
   const [user, setUser] = useState(null);
   const [pacientes, setPacientes] = useState([]);
   const [medicos, setMedicos] = useState([]);
+  const [pacienteInfo, setPacienteInfo] = useState(null);
   const [formData, setFormData] = useState({
     pacientes_id: '',
     medicos_id: '',
@@ -31,8 +32,29 @@ export default function Crear_EditarCita({ navigation, route }) {
   useEffect(() => {
     if (user && !isEditing) {
       preseleccionarDatosPorRol();
+      if (user.role === 'paciente') {
+        obtenerInfoPaciente();
+      }
     }
   }, [user, pacientes, medicos, isEditing]);
+
+  const obtenerInfoPaciente = async () => {
+    try {
+      const pacienteEncontrado = pacientes.find(paciente => {
+        const nombreCoincide = paciente.nombre && (user.nombre || user.name) && 
+          paciente.nombre.toLowerCase().trim() === (user.nombre || user.name).toLowerCase().trim();
+        const userIdCoincide = paciente.user_id && 
+          String(paciente.user_id) === String(user.id);
+        return nombreCoincide || userIdCoincide;
+      });
+      
+      if (pacienteEncontrado) {
+        setPacienteInfo(pacienteEncontrado);
+      }
+    } catch (error) {
+      console.error('Error obteniendo info del paciente:', error);
+    }
+  };
 
   const loadInitialData = async () => {
     try {
@@ -76,7 +98,8 @@ export default function Crear_EditarCita({ navigation, route }) {
         return;
       }
       
-      const response = await AuthService.getPacientes();      
+      const response = await AuthService.getPacientes();
+      
       if (response && response.data) {
         setPacientes(response.data);
       } else if (response && Array.isArray(response)) {
@@ -99,6 +122,16 @@ export default function Crear_EditarCita({ navigation, route }) {
     }
   };
 
+  const obtenerEspecialidades = async () => {
+    try {
+      const response = await AuthService.getEspecialidades();
+      return response?.data || response || [];
+    } catch (error) {
+      console.error('Error obteniendo especialidades:', error);
+      return [];
+    }
+  };
+
   const loadMedicos = async () => {
     try {
       if (user?.role === 'medico') {
@@ -106,18 +139,42 @@ export default function Crear_EditarCita({ navigation, route }) {
           id: user.id,
           nombre: user.nombre || user.name,
           apellido: user.apellido || '',
-          especialidad: user.especialidad || 'General'
+          especialidad: user.especialidad || 'Sin especialidad'
         }]);
         return;
       }
 
       const response = await AuthService.getMedicos();
+      let medicosData = [];
       
       if (response && response.data) {
-        setMedicos(response.data);
+        medicosData = response.data;
       } else if (response && Array.isArray(response)) {
-        setMedicos(response);
+        medicosData = response;
       }
+
+      const especialidades = await obtenerEspecialidades();
+
+      const especialidadesMap = {};
+      especialidades.forEach(esp => {
+        especialidadesMap[esp.id] = esp.nombre || esp.name || esp.title || 'Sin nombre';
+      });
+
+
+      const medicosConEspecialidad = medicosData.map(medico => {
+        let especialidad = 'Sin especialidad';
+        
+        if (medico.especialidad_id && especialidadesMap[medico.especialidad_id]) {
+          especialidad = especialidadesMap[medico.especialidad_id];
+        }
+        
+        return {
+          ...medico,
+          especialidad: especialidad
+        };
+      });
+
+      setMedicos(medicosConEspecialidad);
     } catch (error) {
       console.error('Error cargando médicos:', error);
       
@@ -126,7 +183,7 @@ export default function Crear_EditarCita({ navigation, route }) {
           id: user.id,
           nombre: user.nombre || user.name,
           apellido: user.apellido || '',
-          especialidad: user.especialidad || 'General'
+          especialidad: user.especialidad || 'Sin especialidad'
         }]);
         return;
       }
@@ -143,13 +200,18 @@ export default function Crear_EditarCita({ navigation, route }) {
         horaFormateada = `${partesHora[0]}:${partesHora[1]}`;
       }
 
+      let observacionesProcesadas = '';
+      if (citaAEditar.observaciones !== null && citaAEditar.observaciones !== undefined) {
+        observacionesProcesadas = String(citaAEditar.observaciones);
+      }
+
       setFormData({
-        pacientes_id: citaAEditar.pacientes_id || '',
-        medicos_id: citaAEditar.medicos_id || '',
+        pacientes_id: String(citaAEditar.pacientes_id || ''),
+        medicos_id: String(citaAEditar.medicos_id || ''),
         fechaCita: citaAEditar.fechaCita || '',
         horaCita: horaFormateada || '',
         estado: citaAEditar.estado || 'pendiente',
-        observaciones: citaAEditar.observaciones || ''
+        observaciones: observacionesProcesadas
       });
     }
   };
@@ -160,12 +222,14 @@ export default function Crear_EditarCita({ navigation, route }) {
     setFormData(prev => {
       const newFormData = { ...prev };
       
-      if (user.role === 'paciente' && pacientes.length > 0) {
-        newFormData.pacientes_id = user.id;
+      if (user.role === 'paciente' && pacienteInfo) {
+        newFormData.pacientes_id = String(pacienteInfo.id);
+      } else if (user.role === 'paciente' && pacientes.length > 0) {
+        newFormData.pacientes_id = String(user.id);
       }
       
       if (user.role === 'medico' && medicos.length > 0) {
-        newFormData.medicos_id = user.id;
+        newFormData.medicos_id = String(user.id);
       }
       
       return newFormData;
@@ -180,14 +244,32 @@ export default function Crear_EditarCita({ navigation, route }) {
     }
 
     if (isEditing && user?.role === 'paciente') {
-      if (field === 'medicos_id' || field === 'estado') {
-        return;
+      const pacientePuedeEditar = verificarSiPacientePuedeEditar();
+      
+      if (!pacientePuedeEditar) {
+        if (field !== 'observaciones') {
+          Alert.alert(
+            'Sin permisos',
+            'No tienes permisos para editar esta cita. Solo puedes agregar observaciones.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+      } else {
+        if (field === 'medicos_id' || field === 'estado') {
+          return;
+        }
       }
+    }
+
+    let processedValue = value;
+    if (field === 'observaciones') {
+      processedValue = value === null || value === undefined ? '' : String(value);
     }
 
     setFormData(prev => ({
       ...prev,
-      [field]: value || ''
+      [field]: processedValue
     }));
     
     if (errors[field]) {
@@ -198,10 +280,41 @@ export default function Crear_EditarCita({ navigation, route }) {
     }
   };
 
+  const verificarSiPacientePuedeEditar = () => {
+    if (!citaAEditar || !user || user.role !== 'paciente') {
+      return false;
+    }
+    
+    const userIdActual = String(user.id);
+    const citaUserId = String(citaAEditar.user_id || '');
+    const citaPacientesId = String(citaAEditar.pacientes_id || '');
+    
+    const puedeEditarPorUserId = citaUserId === userIdActual;
+    const puedeEditarPorPacienteId = citaPacientesId === userIdActual;
+    
+    let puedeEditarPorPacienteInfo = false;
+    if (pacienteInfo && citaAEditar.pacientes_id) {
+      puedeEditarPorPacienteInfo = String(citaAEditar.pacientes_id) === String(pacienteInfo.id);
+    }
+    
+    const puedeEditarPorDatos = (
+      citaAEditar.paciente_nombre && 
+      (user.nombre || user.name)
+    ) && (
+      citaAEditar.paciente_nombre.toLowerCase().trim() === (user.nombre || user.name || '').toLowerCase().trim()
+    );
+    
+    return puedeEditarPorUserId || puedeEditarPorPacienteId || puedeEditarPorPacienteInfo || puedeEditarPorDatos;
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
-    if (user?.role !== 'admin' && !formData.pacientes_id) {
+    if (!isEditing && user?.role !== 'admin' && !formData.pacientes_id) {
+      newErrors.pacientes_id = 'El paciente es obligatorio';
+    }
+    
+    if (isEditing && shouldShowField('pacientes_id') && !formData.pacientes_id) {
       newErrors.pacientes_id = 'El paciente es obligatorio';
     }
 
@@ -240,7 +353,7 @@ export default function Crear_EditarCita({ navigation, route }) {
     if (!formData.estado) {
       newErrors.estado = 'El estado es obligatorio';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -271,29 +384,99 @@ export default function Crear_EditarCita({ navigation, route }) {
     try {
       setLoading(true);
 
+      let observacionesProcessed = '';
+      
+      if (formData.observaciones !== null && formData.observaciones !== undefined) {
+        const obsValue = formData.observaciones;
+        if (typeof obsValue === 'string') {
+          observacionesProcessed = obsValue.trim();
+        } else {
+          observacionesProcessed = String(obsValue).trim();
+        }
+      }
+
+      observacionesProcessed = observacionesProcessed || '';
+
       const citaData = {
-        pacientes_id: parseInt(formData.pacientes_id) || null,
-        medicos_id: parseInt(formData.medicos_id),
         fechaCita: formData.fechaCita.trim(),
         horaCita: formData.horaCita.trim(),
-        estado: formData.estado.trim()
+        estado: formData.estado.trim(),
+        observaciones: String(observacionesProcessed)
       };
 
-      if (formData.observaciones && formData.observaciones.trim()) {
-        citaData.observaciones = formData.observaciones.trim();
-      }
+      if (isEditing) {
+        const baseData = {};
 
-      if (!isEditing) {
+        if (user.role === 'medico') {
+          Object.assign(baseData, {
+            estado: formData.estado.trim(),
+            observaciones: String(observacionesProcessed)
+          });
+        } else if (user.role === 'paciente') {
+          const pacientePuedeEditar = verificarSiPacientePuedeEditar();
+          if (pacientePuedeEditar) {
+            Object.assign(baseData, {
+              fechaCita: formData.fechaCita.trim(),
+              horaCita: formData.horaCita.trim(),
+              estado: formData.estado.trim(),
+              observaciones: String(observacionesProcessed) 
+            });
+          } else {
+            baseData.observaciones = String(observacionesProcessed);
+          }
+        } else if (user.role === 'admin') {
+          Object.assign(baseData, {
+            fechaCita: formData.fechaCita.trim(),
+            horaCita: formData.horaCita.trim(),
+            estado: formData.estado.trim(),
+            observaciones: String(observacionesProcessed)
+          });
+          
+          if (formData.medicos_id) {
+            baseData.medicos_id = parseInt(formData.medicos_id);
+          }
+          if (formData.pacientes_id) {
+            baseData.pacientes_id = parseInt(formData.pacientes_id);
+          }
+        }
+
+        Object.keys(citaData).forEach(key => delete citaData[key]);
+        Object.assign(citaData, baseData);
+        
+      } else {
         citaData.user_id = user.id;
+        citaData.medicos_id = parseInt(formData.medicos_id);
+        
+        if (user.role === 'paciente') {
+          if (pacienteInfo && pacienteInfo.id) {
+            citaData.pacientes_id = parseInt(pacienteInfo.id);
+          } else {
+            citaData.pacientes_id = null;
+          }
+        } else {
+          citaData.pacientes_id = parseInt(formData.pacientes_id) || null;
+        }
       }
-
+      
+      if (citaData.observaciones !== undefined) {
+        citaData.observaciones = String(citaData.observaciones || '');
+      }
+      
       let response;
       if (isEditing) {
-        response = await AuthService.editarCita(citaAEditar.id, citaData);
+        const dataToSend = {};
+        Object.keys(citaData).forEach(key => {
+          if (key === 'observaciones') {
+            dataToSend[key] = String(citaData[key] || '');
+          } else {
+            dataToSend[key] = citaData[key];
+          }
+        });
+                
+        response = await AuthService.editarCita(citaAEditar.id, dataToSend);
       } else {
         response = await AuthService.crearCita(citaData);
       }
-
 
       if (response && (response.data || response.success)) {
         Alert.alert(
@@ -309,13 +492,23 @@ export default function Crear_EditarCita({ navigation, route }) {
       } else {
         throw new Error('Respuesta inesperada del servidor');
       }
-    } catch (error) {      
+    } catch (error) {
+      console.error('Error completo:', error);
+  
       let errorMessage = 'Error desconocido al guardar la cita';
       
       if (error.response) {
         const { status, data } = error.response;
         
         switch (status) {
+          case 500:
+            errorMessage = 'Error interno del servidor.';
+            if (data.message && data.message.includes('Integrity constraint')) {
+              errorMessage = 'Error de referencia en base de datos. El paciente o médico seleccionado no existe.';
+            } else if (data.message) {
+              errorMessage += '\nDetalle: ' + data.message;
+            }
+            break;
           case 403:
             if (data.debug?.user_role && data.debug?.allowed_roles) {
               errorMessage = `Error de permisos: Tu rol (${data.debug.user_role}) no tiene acceso a esta función.\nRoles permitidos: ${data.debug.allowed_roles.join(', ')}`;
@@ -325,7 +518,6 @@ export default function Crear_EditarCita({ navigation, route }) {
             break;
           case 422:
             if (data.errors) {
-              
               const errorsList = Object.entries(data.errors).map(([field, errors]) => {
                 const errorArray = Array.isArray(errors) ? errors : [errors];
                 return `• ${field}: ${errorArray.join(', ')}`;
@@ -346,13 +538,6 @@ export default function Crear_EditarCita({ navigation, route }) {
             break;
           case 409:
             errorMessage = 'Ya existe una cita para este paciente en la fecha y hora seleccionada';
-            break;
-          case 500:
-            if (data.message && data.message.includes("user_id")) {
-              errorMessage = 'Error interno del servidor relacionado con usuario. Por favor contacta al administrador.';
-            } else {
-              errorMessage = data.message || `Error del servidor (${status})`;
-            }
             break;
           default:
             errorMessage = data.message || `Error del servidor (${status})`;
@@ -406,6 +591,12 @@ export default function Crear_EditarCita({ navigation, route }) {
     }
     
     if (isEditing && user?.role === 'paciente') {
+      const pacientePuedeEditar = verificarSiPacientePuedeEditar();
+      
+      if (!pacientePuedeEditar) {
+        return field !== 'observaciones';
+      }
+      
       return field === 'medicos_id' || field === 'estado';
     }
     
@@ -422,6 +613,50 @@ export default function Crear_EditarCita({ navigation, route }) {
     }
     
     return true;
+  };
+
+  const renderMedicoPicker = () => {
+    const disabled = isFieldDisabled('medicos_id');
+    
+    return (
+      <View style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>
+          Médico
+          <Text style={styles.required}> *</Text>
+          {disabled && (
+            <Text style={styles.disabledText}> (Solo lectura)</Text>
+          )}
+        </Text>
+        <View style={[
+          styles.pickerContainer, 
+          errors['medicos_id'] && styles.inputError,
+          disabled && styles.inputDisabled
+        ]}>
+          <Picker
+            selectedValue={formData.medicos_id}
+            onValueChange={(value) => handleInputChange('medicos_id', value)}
+            style={[styles.picker, disabled && styles.pickerDisabled]}
+            enabled={!disabled}
+          >
+            <Picker.Item label="Seleccionar médico" value="" />
+            {medicos.map((medico) => {
+              const nombreCompleto = `${medico.nombre} ${medico.apellido}`.trim();
+              const especialidadTexto = medico.especialidad;
+              const labelCompleto = `${nombreCompleto} - ${especialidadTexto}`;
+                            
+              return (
+                <Picker.Item
+                  key={medico.id}
+                  label={labelCompleto}
+                  value={String(medico.id)}
+                />
+              );
+            })}
+          </Picker>
+        </View>
+        {errors['medicos_id'] && <Text style={styles.errorText}>{errors['medicos_id']}</Text>}
+      </View>
+    );
   };
 
   const renderInput = (
@@ -570,20 +805,12 @@ export default function Crear_EditarCita({ navigation, route }) {
             'pacientes_id',
             pacientes.map(paciente => ({
               label: `${paciente.nombre} ${paciente.apellido} (${paciente.numeroDocumento || paciente.documento})`,
-              value: paciente.id
+              value: String(paciente.id)
             })),
             user?.role !== 'admin'
           )}
 
-          {renderPicker(
-            'Médico',
-            'medicos_id',
-            medicos.map(medico => ({
-              label: `${medico.nombre} ${medico.apellido} - ${medico.especialidad || 'General'}`,
-              value: medico.id
-            })),
-            true
-          )}
+          {shouldShowField('medicos_id') && renderMedicoPicker()}
 
           {renderInput(
             'Fecha de la Cita',

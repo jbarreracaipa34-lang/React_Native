@@ -174,8 +174,7 @@ async getMedicosConEspecialidades() { return api.get('/medicosConEspecialidad');
 async getMedicosConHorarios() { return api.get('/medicosConHorarios'); }
 async getPacientesConCitas() { return api.get('/pacientesConCitas'); }
 async getPacientesPorEPS(eps) { return api.get(`/pacientesPorEPS/${eps}`); }
-async getEspecialidadesConMedicos() {return api.get('/EspecialidadesConMedicos'); 
-}
+async getEspecialidadesConMedicos() {return api.get('/EspecialidadesConMedicos'); }
 }
 
 export default new AuthService();

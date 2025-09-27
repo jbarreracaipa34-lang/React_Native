@@ -35,48 +35,87 @@ export default function ListarEspecialidades({ navigation }) {
     try {
       setLoading(true);
       
-      const especialidadesResult = await AuthService.getEspecialidadesConMedicos();
-      
-      if (especialidadesResult && especialidadesResult.data && Array.isArray(especialidadesResult.data)) {
-        const especialidadesData = especialidadesResult.data;
+      if (loggedUser?.role === 'admin') {
 
-        const especialidadesMap = new Map();
-
-        especialidadesData.forEach(item => {
-          const especialidadId = item.id;
-
-          if (!especialidadesMap.has(especialidadId)) {
-            especialidadesMap.set(especialidadId, {
-              id: especialidadId,
-              nombre: item.nombre,
-              descripcion: item.descripcion || 'Sin descripcion',
-              medicos: []
-            });
-          }
-
-          if (item.medico_id) {
-            especialidadesMap.get(especialidadId).medicos.push({
-              id: item.medico_id,
-              nombre: item.medico_nombre,
-              apellido: item.apellido,
-              numeroLicencia: item.numeroLicencia,
-              telefono: item.telefono || 'No disponible',
-              email: item.email || 'No disponible'
-            });
-          }
-        });
-
-        const especialidadesArray = Array.from(especialidadesMap.values());
+        const todasEspecialidadesResult = await AuthService.getEspecialidades();
         
-        let especialidadesFiltradas = especialidadesArray;
-        if (loggedUser?.role === 'medico') {         
-          especialidadesFiltradas = especialidadesArray.filter(especialidad => {
-            especialidad.medicos.map(m => ({
-              id: m.id,
-              nombre: m.nombre,
-              email: m.email
-            }));
-            
+        if (todasEspecialidadesResult && todasEspecialidadesResult.data) {
+          const todasEspecialidades = todasEspecialidadesResult.data;
+          
+          let especialidadesConMedicos = [];
+          try {
+            const especialidadesConMedicosResult = await AuthService.getEspecialidadesConMedicos();
+            if (especialidadesConMedicosResult && especialidadesConMedicosResult.data) {
+              especialidadesConMedicos = especialidadesConMedicosResult.data;
+            }
+          } catch (error) {
+          }
+
+          const medicosMap = new Map();
+          especialidadesConMedicos.forEach(item => {
+            const especialidadId = item.id;
+            if (!medicosMap.has(especialidadId)) {
+              medicosMap.set(especialidadId, []);
+            }
+            if (item.medico_id) {
+              medicosMap.get(especialidadId).push({
+                id: item.medico_id,
+                nombre: item.medico_nombre,
+                apellido: item.apellido,
+                numeroLicencia: item.numeroLicencia,
+                telefono: item.telefono || 'No disponible',
+                email: item.email || 'No disponible'
+              });
+            }
+          });
+
+          const especialidadesCompletas = todasEspecialidades.map(especialidad => ({
+            id: especialidad.id,
+            nombre: especialidad.nombre,
+            descripcion: especialidad.descripcion || 'Sin descripción',
+            medicos: medicosMap.get(especialidad.id) || [],
+            totalMedicos: (medicosMap.get(especialidad.id) || []).length,
+            totalCitas: 0,
+            citasActivas: 0
+          }));
+
+          setEspecialidades(especialidadesCompletas);
+        }
+      } else {
+        const especialidadesResult = await AuthService.getEspecialidadesConMedicos();
+        
+        if (especialidadesResult && especialidadesResult.data && Array.isArray(especialidadesResult.data)) {
+          const especialidadesData = especialidadesResult.data;
+
+          const especialidadesMap = new Map();
+
+          especialidadesData.forEach(item => {
+            const especialidadId = item.id;
+
+            if (!especialidadesMap.has(especialidadId)) {
+              especialidadesMap.set(especialidadId, {
+                id: especialidadId,
+                nombre: item.nombre,
+                descripcion: item.descripcion || 'Sin descripcion',
+                medicos: []
+              });
+            }
+
+            if (item.medico_id) {
+              especialidadesMap.get(especialidadId).medicos.push({
+                id: item.medico_id,
+                nombre: item.medico_nombre,
+                apellido: item.apellido,
+                numeroLicencia: item.numeroLicencia,
+                telefono: item.telefono || 'No disponible',
+                email: item.email || 'No disponible'
+              });
+            }
+          });
+
+          const especialidadesArray = Array.from(especialidadesMap.values());
+          
+          const especialidadesFiltradas = especialidadesArray.filter(especialidad => {
             const tieneElMedico = especialidad.medicos.some(medico => {
               const coincideId = medico.id === loggedUser.id;
               const coincideMedicoId = medico.id === loggedUser.medicoId;
@@ -87,18 +126,16 @@ export default function ListarEspecialidades({ navigation }) {
             
             return tieneElMedico;
           });
+
+          const especialidadesConStats = especialidadesFiltradas.map(especialidad => ({
+            ...especialidad,
+            totalMedicos: especialidad.medicos.length,
+            totalCitas: 0,
+            citasActivas: 0
+          }));
+
+          setEspecialidades(especialidadesConStats);
         }
-
-        const especialidadesConStats = especialidadesFiltradas.map(especialidad => ({
-          ...especialidad,
-          totalMedicos: especialidad.medicos.length,
-          totalCitas: 0,
-          citasActivas: 0
-        }));
-
-        setEspecialidades(especialidadesConStats);
-      } else {
-        setEspecialidades([]);
       }
     } catch (error) {
       console.error('Error loading especialidades:', error);
@@ -132,26 +169,22 @@ export default function ListarEspecialidades({ navigation }) {
       Alert.alert('Acceso denegado', 'Solo los administradores pueden eliminar especialidades');
       return;
     }
-
     navigation.navigate('EliminarEspecialidades', { especialidad: especialidad });
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'No disponible';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
+  const handleDetalleEspecialidad = (especialidad) => {
+    navigation.navigate('DetalleEspecialidades', { especialidad: especialidad });
   };
 
-  const getEstadoColor = (totalMedicos) => {
-    if (totalMedicos > 0) {
+  const handleCrearEspecialidad = () => {
+    navigation.navigate('Crear_EditarEspecialidades');
+  };
+
+  const getEstadoColor = (especialidad) => {
+    if (especialidad.totalMedicos > 0) {
       return { bg: '#E8F5E8', text: '#2E7D32' };
-    } else {
-      return { bg: '#FFEBEE', text: '#C62828' };
     }
+    return { bg: '#FFF3E0', text: '#F57C00' };
   };
 
   const contarEstadisticas = () => {
@@ -180,39 +213,10 @@ export default function ListarEspecialidades({ navigation }) {
 
     return (
       <View style={styles.accionesContainer}>
-        <View style={styles.detallesInfo}>
-          <Text style={styles.detallesTitle}>Detalles de la especialidad:</Text>
-          
-          <View style={styles.detalleItem}>
-            <Text style={styles.detalleLabel}>Descripcion:</Text>
-            <Text style={styles.detalleValue}>{especialidad.descripcion}</Text>
-          </View>
-
-          <View style={styles.detalleItem}>
-            <Text style={styles.detalleLabel}>Total de medicos:</Text>
-            <Text style={styles.detalleValue}>{especialidad.totalMedicos}</Text>
-          </View>
-
-          <View style={styles.detalleItem}>
-            <Text style={styles.detalleLabel}>Estado:</Text>
-            <View style={[
-              styles.estadoBadge, 
-              { backgroundColor: getEstadoColor(especialidad.totalMedicos).bg }
-            ]}>
-              <Text style={[
-                styles.estadoText,
-                { color: getEstadoColor(especialidad.totalMedicos).text }
-              ]}>
-                {especialidad.totalMedicos > 0 ? 'Activa' : 'Inactiva'}
-              </Text>
-            </View>
-          </View>
-        </View>
-
         <View style={styles.accionesEspecialidad}>
           <TouchableOpacity
             style={[styles.botonAccion, { borderColor: '#1E88E5' }]}
-            onPress={() => navigation.navigate('DetalleEspecialidades', { especialidad: especialidad })}
+            onPress={() => handleDetalleEspecialidad(especialidad)}
           >
             <Ionicons name="eye-outline" size={18} color="#1E88E5" />
           </TouchableOpacity>
@@ -241,7 +245,8 @@ export default function ListarEspecialidades({ navigation }) {
 
   const renderEspecialidadItem = (especialidad, index) => {
     const isExpanded = especialidadExpandida === especialidad.id;
-    const estadoColor = getEstadoColor(especialidad.totalMedicos);
+    const totalMedicos = especialidad.totalMedicos || 0;
+    const estadoColor = getEstadoColor(especialidad);
 
     return (
       <View key={especialidad.id || index} style={styles.especialidadContainer}>
@@ -253,51 +258,40 @@ export default function ListarEspecialidades({ navigation }) {
           <View style={styles.especialidadMainInfo}>
             <View style={styles.especialidadLeft}>
               <Text style={styles.especialidadName}>
-                {especialidad.nombre}
+                {especialidad.nombre || ''}
               </Text>
-              <Text style={styles.especialidadDescription} numberOfLines={2}>
+              <Text style={styles.especialidadDescription}>
                 {especialidad.descripcion}
               </Text>
-              <Text style={styles.especialidadDate}>
-                {especialidad.totalMedicos} medico{especialidad.totalMedicos !== 1 ? 's' : ''} asociado{especialidad.totalMedicos !== 1 ? 's' : ''}
+              <Text style={styles.especialidadStats}>
+                {totalMedicos} médico{totalMedicos !== 1 ? 's' : ''} asociado{totalMedicos !== 1 ? 's' : ''}
               </Text>
               
-              <View style={styles.estadoContainer}>
-                <View style={[
-                  styles.miniEstadoBadge, 
-                  { backgroundColor: estadoColor.bg }
-                ]}>
-                  <Text style={[
-                    styles.miniEstadoText,
-                    { color: estadoColor.text }
-                  ]}>
-                    {especialidad.totalMedicos > 0 ? 'Activa' : 'Inactiva'}
-                  </Text>
-                </View>
+              <View style={styles.estadoInfo}>
+                <Ionicons name="medical-outline" size={12} color="#666" />
+                <Text style={styles.estadoInfoText}>
+                  {totalMedicos > 0 ? 'Disponible para citas' : 'Sin médicos disponibles'}
+                </Text>
               </View>
             </View>
 
             <View style={styles.especialidadRight}>
-              <View style={styles.statsInfo}>
-                <View style={styles.statItem}>
-                  <Ionicons name="people-outline" size={16} color="#666" />
-                  <Text style={styles.statValue}>{especialidad.totalMedicos || 0}</Text>
-                  <Text style={styles.statLabel}>medicos</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Ionicons name="calendar-outline" size={16} color="#666" />
-                  <Text style={styles.statValue}>{especialidad.totalCitas || 0}</Text>
-                  <Text style={styles.statLabel}>citas</Text>
-                </View>
+              <View style={styles.medicosPreviewRight}>
+                {especialidad.medicos.slice(0, 2).map((medico, idx) => (
+                  <View key={idx} style={styles.medicoPreviewItem}>
+                  </View>
+                ))}
+                {especialidad.medicos.length > 2 && (
+                  <Text style={styles.masMedicosText}>
+                    +{especialidad.medicos.length - 2}
+                  </Text>
+                )}
               </View>
               
-              {especialidad.citasActivas > 0 && (
-                <View style={styles.citasActivasBadge}>
-                  <Text style={styles.citasActivasText}>
-                    {especialidad.citasActivas} activas
-                  </Text>
-                </View>
-              )}
+              <View style={styles.medicosCounter}>
+                <Text style={styles.medicosCounterNumber}>{totalMedicos}</Text>
+                <Text style={styles.medicosCounterLabel}>médicos</Text>
+              </View>
             </View>
           </View>
         </TouchableOpacity>
@@ -314,15 +308,15 @@ export default function ListarEspecialidades({ navigation }) {
       <Text style={styles.emptyText}>
         {user?.role === 'medico' 
           ? 'No tienes especialidades asignadas'
-          : 'No hay especialidades registradas'
+          : 'No hay especialidades registradas en el sistema'
         }
       </Text>
       {user?.role === 'admin' && (
         <TouchableOpacity
           style={styles.emptyButton}
-          onPress={() => navigation.navigate('Crear_EditarEspecialidades')}
+          onPress={() => handleCrearEspecialidad()}
         >
-          <Text style={styles.emptyButtonText}>Agregar primera especialidad</Text>
+          <Text style={styles.emptyButtonText}>Agregar especialidades</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -341,7 +335,7 @@ export default function ListarEspecialidades({ navigation }) {
               <MaterialCommunityIcons name="medical-bag" size={24} color="#2196F3" />
             </View>
             <View>
-              <Text style={styles.appName}>Citas Medicas</Text>
+              <Text style={styles.appName}>Citas Médicas</Text>
               <Text style={styles.appSubtitle}>Tu salud en tus manos</Text>
             </View>
           </View>
@@ -352,12 +346,12 @@ export default function ListarEspecialidades({ navigation }) {
 
         <View style={styles.titleContainer}>
           <Text style={styles.screenTitle}>
-            {user?.role === 'medico' ? 'Mis Especialidades' : 'Especialidades'}
+            {user?.role === 'medico' ? 'Mis Especialidades' : 'Gestión de Especialidades'}
           </Text>
           {user?.role === 'admin' && (
             <TouchableOpacity
               style={styles.newButton}
-              onPress={() => navigation.navigate('Crear_EditarEspecialidades')}
+              onPress={() => handleCrearEspecialidad()}
             >
               <Ionicons name="add" size={20} color="#FFF" />
               <Text style={styles.newButtonText}>Nueva</Text>
@@ -372,22 +366,20 @@ export default function ListarEspecialidades({ navigation }) {
           <Text style={styles.statLabel}>Especialidades</Text>
         </View>
         <View style={styles.statItem}>
+          <Text style={styles.statNumber}>{estadisticas.totalMedicos}</Text>
+          <Text style={styles.statLabel}>Médicos</Text>
+        </View>
+        <View style={styles.statItem}>
           <Text style={[styles.statNumber, { color: '#4CAF50' }]}>
             {estadisticas.conMedicos}
           </Text>
-          <Text style={styles.statLabel}>Con Medicos</Text>
+          <Text style={styles.statLabel}>Con Médicos</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={[styles.statNumber, { color: '#FF9800' }]}>
-            {estadisticas.totalMedicos}
+            {estadisticas.sinMedicos}
           </Text>
-          <Text style={styles.statLabel}>Medicos</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: '#2196F3' }]}>
-            {estadisticas.totalCitas}
-          </Text>
-          <Text style={styles.statLabel}>Citas</Text>
+          <Text style={styles.statLabel}>Sin Médicos</Text>
         </View>
       </View>
 
@@ -400,7 +392,13 @@ export default function ListarEspecialidades({ navigation }) {
           <>
             <View style={styles.listHeader}>
               <Text style={styles.listTitle}>
-                {user?.role === 'medico' ? 'Mis Especialidades' : 'Lista de Especialidades'}
+                {user?.role === 'medico' ? 'Especialidades Asignadas' : 'Especialidades por Médico'}
+              </Text>
+              <Text style={styles.listSubtitle}>
+                {user?.role === 'medico' 
+                  ? 'Especialidades en las que puedes atender'
+                  : 'Gestiona las especialidades médicas del sistema'
+                }
               </Text>
             </View>
             {especialidades.map((especialidad, index) => renderEspecialidadItem(especialidad, index))}
@@ -487,12 +485,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    gap: 6,
   },
   newButtonText: {
     color: '#FFF',
     fontSize: 14,
     fontWeight: '600',
+    marginLeft: 6,
   },
   statsContainer: {
     backgroundColor: '#FFF',
@@ -537,6 +535,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
+  listSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
   especialidadContainer: {
     marginHorizontal: 20,
     marginBottom: 1,
@@ -563,7 +566,6 @@ const styles = StyleSheet.create({
   },
   especialidadLeft: {
     flex: 1,
-    paddingRight: 16,
   },
   especialidadName: {
     fontSize: 16,
@@ -573,53 +575,52 @@ const styles = StyleSheet.create({
   },
   especialidadDescription: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 6,
-    lineHeight: 20,
+    color: '#2196F3',
+    fontWeight: '500',
+    marginBottom: 4,
   },
-  especialidadDate: {
+  especialidadStats: {
     fontSize: 12,
-    color: '#999',
+    color: '#666',
     marginBottom: 8,
   },
-  estadoContainer: {
+  estadoInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
   },
-  miniEstadoBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  miniEstadoText: {
+  estadoInfoText: {
     fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'capitalize',
+    color: '#666',
+    marginLeft: 6,
   },
   especialidadRight: {
     alignItems: 'flex-end',
   },
-  statsInfo: {
-    alignItems: 'flex-end',
+  medicosPreviewRight: {
     marginBottom: 8,
+    alignItems: 'flex-end',
   },
-  statValue: {
-    fontSize: 16,
+  medicoPreviewItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  masMedicosText: {
+    fontSize: 10,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  medicosCounter: {
+    alignItems: 'center',
+  },
+  medicosCounterNumber: {
+    fontSize: 18,
     fontWeight: '700',
     color: '#2196F3',
-    marginTop: 2,
   },
-  citasActivasBadge: {
-    backgroundColor: '#E8F5E8',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  citasActivasText: {
-    fontSize: 9,
-    color: '#2E7D32',
-    fontWeight: '500',
+  medicosCounterLabel: {
+    fontSize: 10,
+    color: '#666',
   },
   accionesContainer: {
     backgroundColor: '#F8F9FA',
@@ -630,62 +631,70 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  detallesInfo: {
+  especialidadInfo: {
     marginBottom: 16,
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
     padding: 12,
   },
-  detallesTitle: {
+  especialidadInfoTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
     marginBottom: 12,
   },
-  detalleItem: {
-    marginBottom: 12,
-    paddingBottom: 8,
+  infoItem: {
+    marginBottom: 8,
   },
-  detalleLabel: {
+  infoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  infoLabel: {
     fontSize: 12,
     color: '#666',
     fontWeight: '500',
     marginBottom: 4,
   },
-  detalleValue: {
-    fontSize: 14,
-    color: '#333',
-  },
   estadoBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 12,
-    alignSelf: 'flex-start',
+    minWidth: 80,
+    alignItems: 'center',
   },
   estadoText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     textTransform: 'capitalize',
   },
+  medicosCount: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
+  },
+  medicosPreview: {
+    marginTop: 8,
+  },
   medicoItem: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#666',
     marginBottom: 2,
   },
-  masItems: {
-    fontSize: 12,
+  masMedicos: {
+    fontSize: 11,
     color: '#999',
     fontStyle: 'italic',
-    marginTop: 4,
+    marginTop: 2,
   },
   accionesEspecialidad: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 12,
   },
   botonAccion: {
-    width: 36,
     height: 36,
+    width: 36,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
@@ -696,6 +705,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
+    marginLeft: 12,
   },
   emptyContainer: {
     alignItems: 'center',

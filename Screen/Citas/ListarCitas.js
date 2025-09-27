@@ -13,13 +13,21 @@ export default function ListarCitas({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [citaExpandida, setCitaExpandida] = useState(null);
+  const [pacienteInfo, setPacienteInfo] = useState(null);
 
   useEffect(() => {
     loadUserData();
   }, []);
 
   useEffect(() => {
-    if (user) {
+    if (user && user.role === 'paciente') {
+
+      obtenerInfoPaciente().then(info => {
+        setPacienteInfo(info);
+      });
+      
+      loadCitas(true);
+    } else if (user) {
       loadCitas(true);
     }
   }, [user]);
@@ -49,6 +57,30 @@ export default function ListarCitas({ navigation }) {
 
     return unsubscribe;
   }, [navigation, user]);
+
+  const obtenerInfoPaciente = async () => {
+    try {
+      const pacientesResponse = await AuthService.getPacientes();
+      
+      if (pacientesResponse && pacientesResponse.data) {
+        const pacienteEncontrado = pacientesResponse.data.find(paciente => {
+          const nombreCoincide = paciente.nombre && (user.nombre || user.name) && 
+            paciente.nombre.toLowerCase().trim() === (user.nombre || user.name).toLowerCase().trim();
+          const userIdCoincide = paciente.user_id && 
+            String(paciente.user_id) === String(user.id);
+          return nombreCoincide || userIdCoincide;
+        });
+        
+        if (pacienteEncontrado) {
+          return pacienteEncontrado;
+        }
+      }
+    } catch (error) {
+      console.error('Error obteniendo info del paciente:', error);
+    }
+    
+    return null;
+  };
 
   const loadUserData = async () => {
     try {      
@@ -98,13 +130,29 @@ export default function ListarCitas({ navigation }) {
             break;
 
           case 'paciente':
-
-          citasFiltradas = citasResult.data.filter(cita => {
+            
+            citasFiltradas = citasResult.data.filter(cita => {
               const userIdCita = String(cita.user_id || '');
-              const pacienteIdCita = String(cita.paciente_id || '');
-              const userIdUser = String(user.id);
-                            
-              return userIdCita === userIdUser || pacienteIdCita === userIdUser;
+              const pacientesIdCita = String(cita.pacientes_id || '');
+              const userIdActual = String(user.id);
+              
+              const matchUserId = userIdCita === userIdActual;
+              
+              let matchPacienteId = false;
+              if (pacienteInfo && pacienteInfo.id) {
+                matchPacienteId = String(cita.pacientes_id) === String(pacienteInfo.id);
+              }
+              
+              const matchNombre = (
+                cita.paciente_nombre && 
+                (user.nombre || user.name)
+              ) && (
+                cita.paciente_nombre.toLowerCase().trim() === (user.nombre || user.name || '').toLowerCase().trim()
+              );
+              
+              const incluida = matchUserId || matchPacienteId || matchNombre;
+              
+              return incluida;
             });
             break;
 
