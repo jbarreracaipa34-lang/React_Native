@@ -804,7 +804,6 @@ export default function Crear_EditarCita({ navigation, route }) {
           )}
         </View>
 
-        {/* Sección de Observaciones - Oculta para pacientes creando nueva cita */}
         {(user?.role !== 'paciente' || isEditing) && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -831,7 +830,6 @@ export default function Crear_EditarCita({ navigation, route }) {
           </View>
         )}
 
-        {/* Mensaje informativo para pacientes creando cita */}
         {user?.role === 'paciente' && !isEditing && (
           <View style={styles.infoContainer}>
             <Ionicons name="information-circle" size={20} color="#FF9800" />

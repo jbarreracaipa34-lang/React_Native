@@ -136,7 +136,6 @@ export default function Perfil({ navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* Avatar y Nombre */}
         <View style={styles.profileHeader}>
           <View style={[styles.avatarLarge, { backgroundColor: getHeaderColor() + '20' }]}>
             <Text style={styles.avatarLargeText}>{getRoleIcon()}</Text>
@@ -147,7 +146,6 @@ export default function Perfil({ navigation }) {
           </View>
         </View>
 
-        {/* Información Personal */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Información Personal</Text>
 
@@ -238,7 +236,6 @@ export default function Perfil({ navigation }) {
           </View>
         </View>
 
-        {/* Información Específica por Rol - MÉDICO */}
         {(userRole?.toLowerCase() === 'medico' || userRole?.toLowerCase() === 'doctor') && medicoData && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Información Profesional</Text>
@@ -272,7 +269,6 @@ export default function Perfil({ navigation }) {
                 </>
               )}
               
-              {/* Horarios disponibles para médicos */}
               {medicoData?.horarios_disponibles && medicoData.horarios_disponibles.length > 0 && (
                 <>
                   <View style={styles.divider} />
@@ -299,7 +295,6 @@ export default function Perfil({ navigation }) {
           </View>
         )}
 
-        {/* Acciones */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Configuración</Text>
 
