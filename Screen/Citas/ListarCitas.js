@@ -14,21 +14,27 @@ export default function ListarCitas({ navigation }) {
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [citaExpandida, setCitaExpandida] = useState(null);
   const [pacienteInfo, setPacienteInfo] = useState(null);
+  const [medicoInfo, setMedicoInfo] = useState(null);
 
   useEffect(() => {
     loadUserData();
   }, []);
 
   useEffect(() => {
-    if (user && user.role === 'paciente') {
-
-      obtenerInfoPaciente().then(info => {
-        setPacienteInfo(info);
-      });
-      
-      loadCitas(true);
-    } else if (user) {
-      loadCitas(true);
+    if (user) {
+      if (user.role === 'paciente') {
+        obtenerInfoPaciente().then(info => {
+          setPacienteInfo(info);
+          loadCitas(true, info, null);
+        });
+      } else if (user.role === 'medico') {
+        obtenerInfoMedico().then(info => {
+          setMedicoInfo(info);
+          loadCitas(true, null, info);
+        });
+      } else {
+        loadCitas(true);
+      }
     }
   }, [user]);
 
@@ -40,36 +46,70 @@ export default function ListarCitas({ navigation }) {
     useCallback(() => {
       if (user) {
         setTimeout(() => {
-          loadCitas(false);
+          loadCitas(false, pacienteInfo, medicoInfo);
         }, 100);
       }
-    }, [user])
+    }, [user, pacienteInfo, medicoInfo])
   );
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       if (user) {
         setTimeout(() => {
-          loadCitas(false);
+          loadCitas(false, pacienteInfo, medicoInfo);
         }, 50);
       }
     });
 
     return unsubscribe;
-  }, [navigation, user]);
+  }, [navigation, user, pacienteInfo, medicoInfo]);
+
+  const obtenerInfoMedico = async () => {
+    try {
+      const medicosResponse = await AuthService.getMedicos();
+      const medicosData = medicosResponse?.data || medicosResponse;
+      
+      if (Array.isArray(medicosData)) {
+
+        let medicoEncontrado = medicosData.find(medico => 
+          medico.user_id && String(medico.user_id) === String(user.id)
+        );
+        
+        if (!medicoEncontrado && user.email) {
+          medicoEncontrado = medicosData.find(medico => 
+            medico.email && medico.email.toLowerCase() === user.email.toLowerCase()
+          );
+        }
+        
+        if (medicoEncontrado) {
+          return medicoEncontrado;
+        } else {
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error obteniendo info del medico:', error);
+    }
+    
+    return null;
+  };
 
   const obtenerInfoPaciente = async () => {
     try {
       const pacientesResponse = await AuthService.getPacientes();
       
       if (pacientesResponse && pacientesResponse.data) {
-        const pacienteEncontrado = pacientesResponse.data.find(paciente => {
-          const nombreCoincide = paciente.nombre && (user.nombre || user.name) && 
-            paciente.nombre.toLowerCase().trim() === (user.nombre || user.name).toLowerCase().trim();
-          const userIdCoincide = paciente.user_id && 
-            String(paciente.user_id) === String(user.id);
-          return nombreCoincide || userIdCoincide;
-        });
+
+        let pacienteEncontrado = pacientesResponse.data.find(paciente => 
+          paciente.user_id && String(paciente.user_id) === String(user.id)
+        );
+        
+        if (!pacienteEncontrado) {
+          pacienteEncontrado = pacientesResponse.data.find(paciente => {
+            const nombreCoincide = paciente.nombre && (user.nombre || user.name) && 
+              paciente.nombre.toLowerCase().trim() === (user.nombre || user.name).toLowerCase().trim();
+            return nombreCoincide;
+          });
+        }
         
         if (pacienteEncontrado) {
           return pacienteEncontrado;
@@ -99,7 +139,7 @@ export default function ListarCitas({ navigation }) {
     }
   };
 
-  const loadCitas = async (showLoading = false) => {
+  const loadCitas = async (showLoading = false, pacienteInfoParam = null, medicoInfoParam = null) => {
     try {
       if (!user || !user.role) {
         return;
@@ -107,6 +147,22 @@ export default function ListarCitas({ navigation }) {
 
       if (showLoading) {
         setLoading(true);
+      }
+      
+      let infoMedico = medicoInfoParam || medicoInfo;
+      if (user.role === 'medico' && !infoMedico) {
+        infoMedico = await obtenerInfoMedico();
+        if (infoMedico) {
+          setMedicoInfo(infoMedico);
+        }
+      }
+      
+      let infoPaciente = pacienteInfoParam || pacienteInfo;
+      if (user.role === 'paciente' && !infoPaciente) {
+        infoPaciente = await obtenerInfoPaciente();
+        if (infoPaciente) {
+          setPacienteInfo(infoPaciente);
+        }
       }
       
       const citasResult = await AuthService.getCitasConMedicos();
@@ -120,40 +176,37 @@ export default function ListarCitas({ navigation }) {
             break;
 
           case 'medico':
-            citasFiltradas = citasResult.data.filter(cita => {
-              const medicoUserIdCita = String(cita.medico_user_id || '');
-              const medicoIdCita = String(cita.medicos_id || '');
-              const userIdActual = String(user.id);
-                            
-              return medicoUserIdCita === userIdActual || medicoIdCita === userIdActual;
-            });
+            if (!infoMedico) {
+              Alert.alert(
+                'Configuracion incompleta',
+                'Tu cuenta de medico no esta correctamente configurada. Contacta al administrador.',
+                [{ text: 'OK' }]
+              );
+              citasFiltradas = [];
+            } else {
+              citasFiltradas = citasResult.data.filter(cita => {
+                const medicoIdDeLaCita = cita.medicos_id || cita.medicoId || cita.medico_id;
+                const perteneceAlMedico = String(medicoIdDeLaCita) === String(infoMedico.id);
+                
+                if (perteneceAlMedico) {
+                }
+                
+                return perteneceAlMedico;
+              });
+              
+            }
             break;
 
           case 'paciente':
-            
-            citasFiltradas = citasResult.data.filter(cita => {
-              const userIdCita = String(cita.user_id || '');
-              const pacientesIdCita = String(cita.pacientes_id || '');
-              const userIdActual = String(user.id);
+            if (!infoPaciente) {
+              citasFiltradas = [];
+            } else {
+              citasFiltradas = citasResult.data.filter(cita => {
+                const pacienteIdDeLaCita = cita.pacientes_id || cita.pacienteId || cita.paciente_id;
+                return String(pacienteIdDeLaCita) === String(infoPaciente.id);
+              });
               
-              const matchUserId = userIdCita === userIdActual;
-              
-              let matchPacienteId = false;
-              if (pacienteInfo && pacienteInfo.id) {
-                matchPacienteId = String(cita.pacientes_id) === String(pacienteInfo.id);
-              }
-              
-              const matchNombre = (
-                cita.paciente_nombre && 
-                (user.nombre || user.name)
-              ) && (
-                cita.paciente_nombre.toLowerCase().trim() === (user.nombre || user.name || '').toLowerCase().trim()
-              );
-              
-              const incluida = matchUserId || matchPacienteId || matchNombre;
-              
-              return incluida;
-            });
+            }
             break;
 
           default:
@@ -199,7 +252,7 @@ export default function ListarCitas({ navigation }) {
   const onRefresh = async () => {
     setRefreshing(true);
     setTimeout(async () => {
-      await loadCitas(false);
+      await loadCitas(false, pacienteInfo, medicoInfo);
       setRefreshing(false);
     }, 300);
   };
@@ -266,7 +319,7 @@ export default function ListarCitas({ navigation }) {
       cita: cita,
       onGoBack: () => {
         setTimeout(() => {
-          loadCitas(false);
+          loadCitas(false, pacienteInfo, medicoInfo);
         }, 200);
       }
     });
@@ -277,7 +330,7 @@ export default function ListarCitas({ navigation }) {
       cita: cita,
       onGoBack: () => {
         setTimeout(() => {
-          loadCitas(false);
+          loadCitas(false, pacienteInfo, medicoInfo);
         }, 200);
       }
     });
@@ -288,7 +341,7 @@ export default function ListarCitas({ navigation }) {
       cita: cita,
       onGoBack: () => {
         setTimeout(() => {
-          loadCitas(false);
+          loadCitas(false, pacienteInfo, medicoInfo);
         }, 200);
       }
     });

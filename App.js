@@ -7,8 +7,9 @@ import CitasStack from './Src/Navegation/Stack/CitasStack';
 import PacientesStack from './Src/Navegation/Stack/PacientesStack';
 import MedicosStack from './Src/Navegation/Stack/MedicosStack';
 import horariosDisponiblesStack from './Src/Navegation/Stack/horariosDisponiblesStack';
-import EspecialidadesStack from './Src/Navegation/Stack/EspecialidadesStack'
+import EspecialidadesStack from './Src/Navegation/Stack/EspecialidadesStack';
 import Crear_EditarCitas from './Screen/Citas/Crear_EditarCitas';
+import Perfil from './Screen/inicio/perfil';
 
 const Stack = createNativeStackNavigator();
 
@@ -22,8 +23,8 @@ export default function App() {
         <Stack.Screen name="MedicosStack" component={MedicosStack} options={{ headerShown: false }} />
         <Stack.Screen name="horariosDisponiblesStack" component={horariosDisponiblesStack} options={{ headerShown: false }} />
         <Stack.Screen name="EspecialidadesStack" component={EspecialidadesStack} options={{ headerShown: false }} />
+        <Stack.Screen name="Perfil" component={Perfil} options={{ headerShown: false }} />
         <Stack.Screen name="Crear_EditarCitas" component={Crear_EditarCitas} options={{ title: "Crear/Editar Cita" }}/>
-
       </Stack.Navigator>
     </NavigationContainer>
   );

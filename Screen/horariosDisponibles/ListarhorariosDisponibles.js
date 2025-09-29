@@ -39,7 +39,23 @@ export default function ListarHorariosDisponibles({ navigation }) {
       const horariosResult = await AuthService.getHorariosDisponiblesPorMedico();
       
       if (horariosResult && horariosResult.data && Array.isArray(horariosResult.data)) {
-        const horariosData = horariosResult.data;
+        let horariosData = horariosResult.data;
+
+        if (user?.role === 'medico') {
+          const emailUsuario = user.email;
+          horariosData = horariosData.filter(item => {
+            return item.email && emailUsuario && 
+                   item.email.toLowerCase().trim() === emailUsuario.toLowerCase().trim();
+          });
+
+          if (horariosData.length === 0 && user.name) {
+            const nombreUsuario = user.name;
+            horariosData = horariosResult.data.filter(item => {
+              return item.nombre && 
+                     item.nombre.toLowerCase().trim() === nombreUsuario.toLowerCase().trim();
+            });
+          }
+        }
 
         const medicosMap = new Map();
 
@@ -67,12 +83,42 @@ export default function ListarHorariosDisponibles({ navigation }) {
         }));
 
         horariosArray.forEach(medico => {
+          const horariosPorDia = {};
+          
+          medico.horarios.forEach(horario => {
+            const dia = horario.diaSemana;
+            if (!horariosPorDia[dia]) {
+              horariosPorDia[dia] = [];
+            }
+            horariosPorDia[dia].push({
+              horaInicio: horario.horaInicio,
+              horaFin: horario.horaFin
+            });
+          });
+
+          Object.keys(horariosPorDia).forEach(dia => {
+            horariosPorDia[dia].sort((a, b) => {
+              return a.horaInicio.localeCompare(b.horaInicio);
+            });
+          });
+
+          const diasOrden = ['L', 'Mar', 'Mie', 'J', 'V', 'S'];
+          medico.horariosAgrupados = [];
+
+          diasOrden.forEach(dia => {
+            if (horariosPorDia[dia]) {
+              medico.horariosAgrupados.push({
+                diaSemana: dia,
+                horarios: horariosPorDia[dia]
+              });
+            }
+          });
+
           medico.horarios.sort((a, b) => {
             const diasOrden = {
-              'lunes': 1, 'martes': 2, 'miercoles': 3, 'jueves': 4,
-              'viernes': 5, 'sabado': 6, 'domingo': 7
+              'L': 1, 'Mar': 2, 'Mie': 3, 'J': 4, 'V': 5, 'S': 6
             };
-            return (diasOrden[a.diaSemana.toLowerCase()] || 8) - (diasOrden[b.diaSemana.toLowerCase()] || 8);
+            return (diasOrden[a.diaSemana] || 7) - (diasOrden[b.diaSemana] || 7);
           });
         });
 
@@ -130,26 +176,48 @@ export default function ListarHorariosDisponibles({ navigation }) {
 
   const getDiaColor = (dia) => {
     const colores = {
+      'L': { bg: '#E3F2FD', text: '#1976D2' },
       'lunes': { bg: '#E3F2FD', text: '#1976D2' },
+      'Mar': { bg: '#E8F5E8', text: '#388E3C' },
       'martes': { bg: '#E8F5E8', text: '#388E3C' },
+      'Mie': { bg: '#FFF3E0', text: '#F57C00' },
       'miercoles': { bg: '#FFF3E0', text: '#F57C00' },
+      'J': { bg: '#F3E5F5', text: '#7B1FA2' },
       'jueves': { bg: '#F3E5F5', text: '#7B1FA2' },
+      'V': { bg: '#E0F2F1', text: '#00796B' },
       'viernes': { bg: '#E0F2F1', text: '#00796B' },
-      'sabado': { bg: '#FFF8E1', text: '#F9A825' },
-      'domingo': { bg: '#FFEBEE', text: '#D32F2F' }
+      'S': { bg: '#FFF8E1', text: '#F9A825' },
+      'sabado': { bg: '#FFF8E1', text: '#F9A825' }
     };
-    return colores[dia.toLowerCase()] || { bg: '#F5F5F5', text: '#666' };
+    return colores[dia] || { bg: '#F5F5F5', text: '#666' };
+  };
+
+  const getDiaAbreviado = (dia) => {
+    const abreviaciones = {
+      'L': 'LUN',
+      'lunes': 'LUN',
+      'Mar': 'MAR',
+      'martes': 'MAR',
+      'Mie': 'MIE',
+      'miercoles': 'MIE',
+      'J': 'JUE',
+      'jueves': 'JUE',
+      'V': 'VIE',
+      'viernes': 'VIE',
+      'S': 'SAB',
+      'sabado': 'SAB'
+    };
+    return abreviaciones[dia] || dia.substring(0, 3).toUpperCase();
   };
 
   const contarHorariosPorDia = () => {
     const contadores = {
-      lunes: 0, martes: 0, miercoles: 0, jueves: 0,
-      viernes: 0, sabado: 0, domingo: 0
+      'L': 0, 'Mar': 0, 'Mie': 0, 'J': 0, 'V': 0, 'S': 0
     };
 
     horarios.forEach(medico => {
       medico.horarios.forEach(horario => {
-        const dia = horario.diaSemana.toLowerCase();
+        const dia = horario.diaSemana;
         if (contadores.hasOwnProperty(dia)) {
           contadores[dia]++;
         }
@@ -166,23 +234,27 @@ export default function ListarHorariosDisponibles({ navigation }) {
       <View style={styles.accionesContainer}>
         <View style={styles.horariosInfo}>
           <Text style={styles.horariosTitle}>Horarios de atencion:</Text>
-          {medico.horarios.map((horario, index) => (
-            <View key={index} style={styles.horarioItem}>
-              <View style={styles.horarioHeader}>
+          {medico.horariosAgrupados?.map((diaHorarios, index) => (
+            <View key={index} style={styles.horarioItemAgrupado}>
+              <View style={styles.horarioHeaderAgrupado}>
                 <View style={[
-                  styles.diaBadge,
-                  { backgroundColor: getDiaColor(horario.diaSemana).bg }
+                  styles.diaBadgeAgrupado,
+                  { backgroundColor: getDiaColor(diaHorarios.diaSemana).bg }
                 ]}>
                   <Text style={[
-                    styles.diaText,
-                    { color: getDiaColor(horario.diaSemana).text }
+                    styles.diaTextAgrupado,
+                    { color: getDiaColor(diaHorarios.diaSemana).text }
                   ]}>
-                    {horario.diaSemana.charAt(0).toUpperCase() + horario.diaSemana.slice(1)}
+                    {getDiaAbreviado(diaHorarios.diaSemana)}
                   </Text>
                 </View>
-                <Text style={styles.horarioTime}>
-                  {formatTime(horario.horaInicio)} - {formatTime(horario.horaFin)}
-                </Text>
+                <View style={styles.horariosMultiples}>
+                  {diaHorarios.horarios.map((horario, idx) => (
+                    <Text key={idx} style={styles.horarioTimeAgrupado}>
+                      {formatTime(horario.horaInicio)}-{formatTime(horario.horaFin)}
+                    </Text>
+                  ))}
+                </View>
               </View>
             </View>
           ))}
@@ -238,7 +310,7 @@ export default function ListarHorariosDisponibles({ navigation }) {
   const renderMedicoItem = (medico, index) => {
     const isExpanded = horarioExpandido === medico.id;
     const totalHorarios = medico.horarios?.length || 0;
-    const diasUnicos = [...new Set(medico.horarios?.map(h => h.diaSemana.toLowerCase()) || [])];
+    const diasUnicos = [...new Set(medico.horarios?.map(h => h.diaSemana) || [])];
 
     return (
       <View key={medico.id || index} style={styles.medicoContainer}>
@@ -251,9 +323,6 @@ export default function ListarHorariosDisponibles({ navigation }) {
             <View style={styles.medicoLeft}>
               <Text style={styles.medicoName}>
                 Dr. {medico.nombre || ''} {medico.apellido || ''}
-              </Text>
-              <Text style={styles.medicoSpecialty}>
-                Medico General
               </Text>
               <Text style={styles.medicoLicense}>
                 {totalHorarios} horario{totalHorarios !== 1 ? 's' : ''} disponible{totalHorarios !== 1 ? 's' : ''}
@@ -314,6 +383,8 @@ export default function ListarHorariosDisponibles({ navigation }) {
       <Text style={styles.emptyText}>
         {user?.role === 'paciente' 
           ? 'No hay medicos con horarios de atencion disponibles'
+          : user?.role === 'medico'
+          ? 'No tienes horarios registrados'
           : 'No hay horarios registrados en el sistema'
         }
       </Text>
@@ -353,7 +424,8 @@ export default function ListarHorariosDisponibles({ navigation }) {
 
         <View style={styles.titleContainer}>
           <Text style={styles.screenTitle}>
-            {user?.role === 'paciente' ? 'Horarios Disponibles' : 'Gestion de Horarios'}
+            {user?.role === 'paciente' ? 'Horarios Disponibles' : 
+             user?.role === 'medico' ? 'Mis Horarios' : 'Gestion de Horarios'}
           </Text>
           {(user?.role === 'medico' || user?.role === 'admin') && (
             <TouchableOpacity
@@ -370,7 +442,9 @@ export default function ListarHorariosDisponibles({ navigation }) {
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>{horarios.length}</Text>
-          <Text style={styles.statLabel}>Medicos</Text>
+          <Text style={styles.statLabel}>
+            {user?.role === 'medico' ? 'Mi Perfil' : 'Medicos'}
+          </Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>{totalHorarios}</Text>
@@ -378,15 +452,15 @@ export default function ListarHorariosDisponibles({ navigation }) {
         </View>
         <View style={styles.statItem}>
           <Text style={[styles.statNumber, { color: '#4CAF50' }]}>
-            {estadisticasDias.lunes + estadisticasDias.martes + estadisticasDias.miercoles + estadisticasDias.jueves + estadisticasDias.viernes}
+            {estadisticasDias.L + estadisticasDias.Mar + estadisticasDias.Mie + estadisticasDias.J + estadisticasDias.V}
           </Text>
           <Text style={styles.statLabel}>Dias Laborales</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={[styles.statNumber, { color: '#FF9800' }]}>
-            {estadisticasDias.sabado + estadisticasDias.domingo}
+            {estadisticasDias.S}
           </Text>
-          <Text style={styles.statLabel}>Fines Semana</Text>
+          <Text style={styles.statLabel}>Sabados</Text>
         </View>
       </View>
 
@@ -399,11 +473,14 @@ export default function ListarHorariosDisponibles({ navigation }) {
           <>
             <View style={styles.listHeader}>
               <Text style={styles.listTitle}>
-                {user?.role === 'paciente' ? 'Medicos Disponibles' : 'Horarios por Medico'}
+                {user?.role === 'paciente' ? 'Medicos Disponibles' : 
+                 user?.role === 'medico' ? 'Mis Horarios de Atencion' : 'Horarios por Medico'}
               </Text>
               <Text style={styles.listSubtitle}>
                 {user?.role === 'paciente' 
                   ? 'Selecciona un medico para agendar tu cita'
+                  : user?.role === 'medico'
+                  ? 'Revisa y gestiona tus horarios disponibles'
                   : 'Gestiona los horarios de atencion medica'
                 }
               </Text>
@@ -665,30 +742,42 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 12,
   },
-  horarioItem: {
+  horarioItemAgrupado: {
     marginBottom: 8,
   },
-  horarioHeader: {
+  horarioHeaderAgrupado: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
   },
-  diaBadge: {
+  diaBadgeAgrupado: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 12,
-    minWidth: 80,
+    borderRadius: 8,
+    minWidth: 50,
     alignItems: 'center',
   },
-  diaText: {
+  diaTextAgrupado: {
     fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'capitalize',
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
-  horarioTime: {
-    fontSize: 14,
+  horariosMultiples: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  horarioTimeAgrupado: {
+    fontSize: 13,
     color: '#333',
-    fontWeight: '600',
+    fontWeight: '500',
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   accionesMedico: {
     flexDirection: 'row',

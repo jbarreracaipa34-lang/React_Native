@@ -39,7 +39,7 @@ export default function Crear_EditarMedicos({ navigation, route }) {
         setUser(authData.user);
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo cargar la información del usuario');
+      Alert.alert('Error', 'No se pudo cargar la informacion del usuario');
     }
   };
 
@@ -132,17 +132,17 @@ export default function Crear_EditarMedicos({ navigation, route }) {
     }
 
     if (!formData.numeroLicencia.trim()) {
-      newErrors.numeroLicencia = 'El número de licencia es obligatorio';
+      newErrors.numeroLicencia = 'El numero de licencia es obligatorio';
     }
 
     if (!formData.telefono.trim()) {
-      newErrors.telefono = 'El teléfono es obligatorio';
+      newErrors.telefono = 'El telefono es obligatorio';
     }
 
     if (!formData.email.trim()) {
       newErrors.email = 'El email es obligatorio';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'El email no tiene un formato válido';
+      newErrors.email = 'El email no tiene un formato valido';
     }
 
     if (especialidades.length > 0 && !formData.especialidad_id) {
@@ -150,11 +150,11 @@ export default function Crear_EditarMedicos({ navigation, route }) {
     }
 
     if (formData.telefono && !/^[\d\s\-\+\(\)]+$/.test(formData.telefono)) {
-      newErrors.telefono = 'El teléfono solo puede contener números, espacios, guiones, + y paréntesis';
+      newErrors.telefono = 'El telefono solo puede contener numeros, espacios, guiones, + y parentesis';
     }
 
     if (formData.numeroLicencia && !/^[A-Za-z0-9\-]+$/.test(formData.numeroLicencia)) {
-      newErrors.numeroLicencia = 'El número de licencia solo puede contener números, letras y guiones';
+      newErrors.numeroLicencia = 'El numero de licencia solo puede contener numeros, letras y guiones';
     }
 
     setErrors(newErrors);
@@ -168,7 +168,7 @@ export default function Crear_EditarMedicos({ navigation, route }) {
     }
 
     if (!user) {
-      Alert.alert('Error', 'Sesión no válida. Por favor, reinicia la aplicación.');
+      Alert.alert('Error', 'Sesion no valida. Por favor, reinicia la aplicacion.');
       return;
     }
 
@@ -190,14 +190,14 @@ export default function Crear_EditarMedicos({ navigation, route }) {
   const proceedWithSubmit = async () => {
     try {
       const tokenVerification = await AuthService.verifyToken();
-      console.log('Verificación de token:', tokenVerification);
+      console.log('Verificacion de token:', tokenVerification);
       
       if (!tokenVerification.success) {
-        Alert.alert('Error', 'Tu sesión ha expirado. Por favor inicia sesión nuevamente.');
+        Alert.alert('Error', 'Tu sesion ha expirado. Por favor inicia sesion nuevamente.');
         return;
       }
     } catch (error) {
-      Alert.alert('Error', 'Problema de autenticación. Por favor inicia sesión nuevamente.');
+      Alert.alert('Error', 'Problema de autenticacion. Por favor inicia sesion nuevamente.');
       return;
     }
 
@@ -224,8 +224,8 @@ export default function Crear_EditarMedicos({ navigation, route }) {
 
       if (response && (response.data || response.success)) {
         Alert.alert(
-          'Éxito',
-          isEditing ? 'Médico actualizado correctamente' : 'Médico creado correctamente',
+          'exito',
+          isEditing ? 'Medico actualizado correctamente' : 'Medico creado correctamente',
           [
             {
               text: 'OK',
@@ -240,7 +240,7 @@ export default function Crear_EditarMedicos({ navigation, route }) {
       console.error('Error completo:', error); 
       console.error('Error response:', error.response);
       
-      let errorMessage = 'Error desconocido al guardar el médico';
+      let errorMessage = 'Error desconocido al guardar el medico';
       
       if (error.response) {
         const { status, data } = error.response;
@@ -248,9 +248,9 @@ export default function Crear_EditarMedicos({ navigation, route }) {
         switch (status) {
           case 403:
             if (data.debug?.user_role && data.debug?.allowed_roles) {
-              errorMessage = `Error de permisos: Tu rol (${data.debug.user_role}) no tiene acceso a esta función.\nRoles permitidos: ${data.debug.allowed_roles.join(', ')}`;
+              errorMessage = `Error de permisos: Tu rol (${data.debug.user_role}) no tiene acceso a esta funcion.\nRoles permitidos: ${data.debug.allowed_roles.join(', ')}`;
             } else {
-              errorMessage = 'No tienes permisos para realizar esta acción';
+              errorMessage = 'No tienes permisos para realizar esta accion';
             }
             break;
           case 422:
@@ -258,11 +258,11 @@ export default function Crear_EditarMedicos({ navigation, route }) {
               const firstError = Object.values(data.errors)[0];
               errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
             } else {
-              errorMessage = data.message || 'Datos inválidos';
+              errorMessage = data.message || 'Datos invalidos';
             }
             break;
           case 409:
-            errorMessage = 'Ya existe un médico con este número de licencia o email';
+            errorMessage = 'Ya existe un medico con este numero de licencia o email';
             break;
           case 500:
             if (data.message && (data.message.includes("user_id") || data.message.includes("Unknown column"))) {
@@ -277,7 +277,7 @@ export default function Crear_EditarMedicos({ navigation, route }) {
       } else if (error.message) {
         errorMessage = error.message;
       } else {
-        errorMessage = `Error de conexión o respuesta inesperada. Detalles: ${JSON.stringify(error)}`;
+        errorMessage = `Error de conexion o respuesta inesperada. Detalles: ${JSON.stringify(error)}`;
       }
       
       Alert.alert('Error', errorMessage);
@@ -397,23 +397,6 @@ export default function Crear_EditarMedicos({ navigation, route }) {
     >
       <StatusBar style="dark" />
 
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>
-            {isEditing ? 'Editar Médico' : 'Nuevo Médico'}
-          </Text>
-          <Text style={styles.headerSubtitle}>
-            {isEditing ? 'Modifica los datos del médico' : 'Completa la información del médico'}
-          </Text>
-        </View>
-      </View>
-
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.formContainer}
@@ -423,28 +406,28 @@ export default function Crear_EditarMedicos({ navigation, route }) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="person-outline" size={20} color="#2196F3" />
-            <Text style={styles.sectionTitle}>Información Personal</Text>
+            <Text style={styles.sectionTitle}>Informacion Personal</Text>
           </View>
 
           {renderInput('Nombre', 'nombre', 'Ingrese el nombre')}
           {renderInput('Apellido', 'apellido', 'Ingrese el apellido')}
-          {renderInput('Número de Licencia', 'numeroLicencia', 'Ingrese el número de licencia médica')}
+          {renderInput('Numero de Licencia', 'numeroLicencia', 'Ingrese el numero de licencia medica')}
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="call-outline" size={20} color="#2196F3" />
-            <Text style={styles.sectionTitle}>Información de Contacto</Text>
+            <Text style={styles.sectionTitle}>Informacion de Contacto</Text>
           </View>
 
-          {renderInput('Teléfono', 'telefono', 'Ingrese el teléfono', 'phone-pad')}
+          {renderInput('Telefono', 'telefono', 'Ingrese el telefono', 'phone-pad')}
           {renderInput('Email', 'email', 'Ingrese el email', 'email-address')}
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="medical-outline" size={20} color="#2196F3" />
-            <Text style={styles.sectionTitle}>Información Médica</Text>
+            <Text style={styles.sectionTitle}>Informacion Medica</Text>
           </View>
 
           {renderEspecialidadesPicker()}

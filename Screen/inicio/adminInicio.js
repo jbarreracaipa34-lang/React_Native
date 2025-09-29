@@ -5,7 +5,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AuthService from '../../Src/Services/AuthService';
 import NavigationService from '../../Src/Services/NavegationService';
 
-export default function AdminInicio() {
+export default function AdminInicio({ navigation }) {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -36,6 +36,10 @@ export default function AdminInicio() {
         },
       ]
     );
+  };
+
+  const navigateToPerfil = () => {
+    navigation.getParent()?.navigate('Perfil');
   };
 
   return (
@@ -109,8 +113,72 @@ export default function AdminInicio() {
           </View>
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 80 }} />
       </ScrollView>
+
+      <View style={styles.bottomNav}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.bottomNavScroll}
+        >
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => navigation.navigate('AdminInicio')}
+          >
+            <MaterialCommunityIcons name="pulse" size={22} color="#1E88E5" />
+            <Text style={[styles.navLabel, styles.navLabelActive]}>Inicio</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => NavigationService.navigate('CitasStack', { screen: 'ListarCitas' })}
+          >
+            <MaterialCommunityIcons name="calendar-blank" size={22} color="#6B7280" />
+            <Text style={styles.navLabel}>Citas</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => NavigationService.navigate('PacientesStack', { screen: 'ListarPacientes' })}
+          >
+            <MaterialCommunityIcons name="account-group" size={22} color="#6B7280" />
+            <Text style={styles.navLabel}>Pacientes</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => NavigationService.navigate('MedicosStack', { screen: 'ListarMedicos' })}
+          >
+            <MaterialCommunityIcons name="stethoscope" size={22} color="#6B7280" />
+            <Text style={styles.navLabel}>Médicos</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => NavigationService.navigate('EspecialidadesStack', { screen: 'ListarEspecialidades' })}
+          >
+            <MaterialCommunityIcons name="medical-bag" size={22} color="#6B7280" />
+            <Text style={styles.navLabel}>Especialidades</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => NavigationService.navigate('horariosDisponiblesStack', { screen: 'ListarhorariosDisponibles' })}
+          >
+            <MaterialCommunityIcons name="clock-outline" size={22} color="#6B7280" />
+            <Text style={styles.navLabel}>Horarios</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={navigateToPerfil}
+          >
+            <Ionicons name="person-outline" size={22} color="#6B7280" />
+            <Text style={styles.navLabel}>Perfil</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -173,38 +241,6 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
     marginBottom: 16,
   },
-  statsContainer: {
-    marginBottom: 30,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  statCard: {
-    width: '47%',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statNumber: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-    textAlign: 'center',
-  },
   actionsContainer: {
     marginBottom: 20,
   },
@@ -238,5 +274,38 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 16,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingTop: 12,
+    paddingBottom: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  bottomNavScroll: {
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+  },
+  navItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    minWidth: 70,
+  },
+  navLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  navLabelActive: {
+    color: '#1E88E5',
+    fontWeight: '600',
   },
 });

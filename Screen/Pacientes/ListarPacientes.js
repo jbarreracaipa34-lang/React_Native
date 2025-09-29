@@ -36,53 +36,105 @@ export default function ListarPacientes({ navigation }) {
     try {
       setLoading(true);
       
-      const pacientesResult = await AuthService.getPacientesConCitas();
-      
-      if (pacientesResult && pacientesResult.data && Array.isArray(pacientesResult.data)) {
-        const citasFiltradas = pacientesResult.data;
-
-        const pacientesMap = new Map();
-
-        citasFiltradas.forEach(item => {
-          const pacienteId = item.id;
-
-          if (!pacientesMap.has(pacienteId)) {
-            pacientesMap.set(pacienteId, {
-              id: pacienteId,
-              nombre: item.nombre,
-              apellido: item.apellido,
-              documento: item.documento || 'No disponible',
-              telefono: item.telefono || 'No disponible',
-              email: item.email || 'No disponible',
-              fechaNacimiento: item.fechaNacimiento || 'No disponible',
-              genero: item.genero || 'No disponible',
-              eps: item.eps || 'No disponible',
-              citas: []
+      if (loggedUser?.role === 'admin') {
+        const todosPacientesResult = await AuthService.getPacientes();
+        
+        if (todosPacientesResult && todosPacientesResult.data && Array.isArray(todosPacientesResult.data)) {
+          const pacientesConCitas = await AuthService.getPacientesConCitas();
+          const citasPorPaciente = new Map();
+          
+          if (pacientesConCitas && pacientesConCitas.data && Array.isArray(pacientesConCitas.data)) {
+            pacientesConCitas.data.forEach(item => {
+              const pacienteId = item.id;
+              if (!citasPorPaciente.has(pacienteId)) {
+                citasPorPaciente.set(pacienteId, []);
+              }
+              citasPorPaciente.get(pacienteId).push({
+                id: item.cita_id,
+                fechaCita: item.fechaCita,
+                horaCita: item.horaCita,
+                estado: item.estado,
+                observaciones: item.observaciones || '',
+                medicoId: item.medicos_id
+              });
             });
           }
 
-          pacientesMap.get(pacienteId).citas.push({
-            id: item.cita_id,
-            fechaCita: item.fechaCita,
-            horaCita: item.horaCita,
-            estado: item.estado,
-            observaciones: item.observaciones || '',
-            medicoId: item.medicos_id
-          });
-        });
+          const pacientesArray = todosPacientesResult.data.map(paciente => ({
+            id: paciente.id,
+            nombre: paciente.nombre,
+            apellido: paciente.apellido,
+            documento: paciente.numeroDocumento || 'No disponible',
+            telefono: paciente.telefono || 'No disponible',
+            email: paciente.email || 'No disponible',
+            fechaNacimiento: paciente.fechaNacimiento || 'No disponible',
+            genero: paciente.genero || 'No disponible',
+            eps: paciente.eps || 'No disponible',
+            citas: citasPorPaciente.get(paciente.id) || []
+          }));
 
-        const pacientesArray = Array.from(pacientesMap.values());
-        pacientesArray.forEach(paciente => {
-          paciente.citas.sort((a, b) => {
-            const dateA = new Date(`${a.fechaCita} ${a.horaCita}`);
-            const dateB = new Date(`${b.fechaCita} ${b.horaCita}`);
-            return dateB - dateA;
+          pacientesArray.forEach(paciente => {
+            if (paciente.citas.length > 0) {
+              paciente.citas.sort((a, b) => {
+                const dateA = new Date(`${a.fechaCita} ${a.horaCita}`);
+                const dateB = new Date(`${b.fechaCita} ${b.horaCita}`);
+                return dateB - dateA;
+              });
+            }
           });
-        });
 
-        setPacientes(pacientesArray);
+          setPacientes(pacientesArray);
+        } else {
+          setPacientes([]);
+        }
       } else {
-        setPacientes([]);
+        const pacientesResult = await AuthService.getPacientesConCitas();
+        
+        if (pacientesResult && pacientesResult.data && Array.isArray(pacientesResult.data)) {
+          const citasFiltradas = pacientesResult.data;
+          const pacientesMap = new Map();
+
+          citasFiltradas.forEach(item => {
+            const pacienteId = item.id;
+
+            if (!pacientesMap.has(pacienteId)) {
+              pacientesMap.set(pacienteId, {
+                id: pacienteId,
+                nombre: item.nombre,
+                apellido: item.apellido,
+                documento: item.documento || 'No disponible',
+                telefono: item.telefono || 'No disponible',
+                email: item.email || 'No disponible',
+                fechaNacimiento: item.fechaNacimiento || 'No disponible',
+                genero: item.genero || 'No disponible',
+                eps: item.eps || 'No disponible',
+                citas: []
+              });
+            }
+
+            pacientesMap.get(pacienteId).citas.push({
+              id: item.cita_id,
+              fechaCita: item.fechaCita,
+              horaCita: item.horaCita,
+              estado: item.estado,
+              observaciones: item.observaciones || '',
+              medicoId: item.medicos_id
+            });
+          });
+
+          const pacientesArray = Array.from(pacientesMap.values());
+          pacientesArray.forEach(paciente => {
+            paciente.citas.sort((a, b) => {
+              const dateA = new Date(`${a.fechaCita} ${a.horaCita}`);
+              const dateB = new Date(`${b.fechaCita} ${b.horaCita}`);
+              return dateB - dateA;
+            });
+          });
+
+          setPacientes(pacientesArray);
+        } else {
+          setPacientes([]);
+        }
       }
     } catch (error) {
       console.error('Error loading pacientes:', error);
@@ -154,6 +206,8 @@ export default function ListarPacientes({ navigation }) {
   };
 
   const getProximaCita = (citas) => {
+    if (!citas || citas.length === 0) return null;
+    
     const now = new Date();
     const citasFuturas = citas.filter(cita => {
       const fechaCita = new Date(`${cita.fechaCita} ${cita.horaCita}`);
@@ -178,25 +232,27 @@ export default function ListarPacientes({ navigation }) {
     };
 
     pacientes.forEach(paciente => {
-      paciente.citas.forEach(cita => {
-        switch (cita.estado?.toLowerCase()) {
-          case 'completada':
-          case 'completado':
-            contadores.completadas++;
-            break;
-          case 'pendiente':
-            contadores.pendientes++;
-            break;
-          case 'confirmada':
-          case 'confirmado':
-            contadores.confirmadas++;
-            break;
-          case 'cancelada':
-          case 'cancelado':
-            contadores.canceladas++;
-            break;
-        }
-      });
+      if (paciente.citas) {
+        paciente.citas.forEach(cita => {
+          switch (cita.estado?.toLowerCase()) {
+            case 'completada':
+            case 'completado':
+              contadores.completadas++;
+              break;
+            case 'pendiente':
+              contadores.pendientes++;
+              break;
+            case 'confirmada':
+            case 'confirmado':
+              contadores.confirmadas++;
+              break;
+            case 'cancelada':
+            case 'cancelado':
+              contadores.canceladas++;
+              break;
+          }
+        });
+      }
     });
 
     return contadores;
@@ -207,45 +263,52 @@ export default function ListarPacientes({ navigation }) {
 
     return (
       <View style={styles.accionesContainer}>
-        <View style={styles.citasInfo}>
-          <Text style={styles.citasTitle}>Historial de citas:</Text>
-          {paciente.citas.slice(0, 3).map((cita, index) => (
-            <View key={cita.id || index} style={styles.citaItem}>
-              <View style={styles.citaHeader}>
-                <Text style={styles.citaDate}>
-                  {formatDate(cita.fechaCita)} - {formatTime(cita.horaCita)}
-                </Text>
-                <View style={[
-                  styles.estadoBadge, 
-                  { backgroundColor: getEstadoColor(cita.estado).bg }
-                ]}>
-                  <Text style={[
-                    styles.estadoText,
-                    { color: getEstadoColor(cita.estado).text }
-                  ]}>
-                    {cita.estado}
+        {paciente.citas && paciente.citas.length > 0 ? (
+          <View style={styles.citasInfo}>
+            <Text style={styles.citasTitle}>Historial de citas:</Text>
+            {paciente.citas.slice(0, 3).map((cita, index) => (
+              <View key={cita.id || index} style={styles.citaItem}>
+                <View style={styles.citaHeader}>
+                  <Text style={styles.citaDate}>
+                    {formatDate(cita.fechaCita)} - {formatTime(cita.horaCita)}
                   </Text>
+                  <View style={[
+                    styles.estadoBadge, 
+                    { backgroundColor: getEstadoColor(cita.estado).bg }
+                  ]}>
+                    <Text style={[
+                      styles.estadoText,
+                      { color: getEstadoColor(cita.estado).text }
+                    ]}>
+                      {cita.estado}
+                    </Text>
+                  </View>
                 </View>
+                <Text style={styles.tipoCita}>{cita.tipoCita}</Text>
+                {cita.observaciones && (
+                  <Text style={styles.observaciones} numberOfLines={2}>
+                    {cita.observaciones}
+                  </Text>
+                )}
               </View>
-              <Text style={styles.tipoCita}>{cita.tipoCita}</Text>
-              {cita.observaciones && (
-                <Text style={styles.observaciones} numberOfLines={2}>
-                  {cita.observaciones}
+            ))}
+            {paciente.citas.length > 3 && (
+              <TouchableOpacity 
+                style={styles.verMasCitas}
+                onPress={() => navigation.navigate('HistorialCitas', { paciente: paciente })}
+              >
+                <Text style={styles.verMasCitasText}>
+                  Ver todas las citas ({paciente.citas.length})
                 </Text>
-              )}
-            </View>
-          ))}
-          {paciente.citas.length > 3 && (
-            <TouchableOpacity 
-              style={styles.verMasCitas}
-              onPress={() => navigation.navigate('HistorialCitas', { paciente: paciente })}
-            >
-              <Text style={styles.verMasCitasText}>
-                Ver todas las citas ({paciente.citas.length})
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : (
+          <View style={styles.sinCitasInfo}>
+            <MaterialCommunityIcons name="calendar-blank" size={32} color="#CCC" />
+            <Text style={styles.sinCitasText}>Sin citas registradas</Text>
+          </View>
+        )}
 
         <View style={styles.accionesPaciente}>
           <TouchableOpacity
@@ -255,7 +318,7 @@ export default function ListarPacientes({ navigation }) {
             <Ionicons name="eye-outline" size={18} color="#1E88E5" />
           </TouchableOpacity>
 
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'medico') && (
             <TouchableOpacity
               style={[styles.botonAccion, { borderColor: '#4CAF50' }]}
               onPress={() => handleEditarPaciente(paciente)}
@@ -340,7 +403,7 @@ export default function ListarPacientes({ navigation }) {
               </View>
               
               <View style={styles.citasCounter}>
-                <Text style={styles.citasCounterNumber}>{paciente.citas.length}</Text>
+                <Text style={styles.citasCounterNumber}>{paciente.citas?.length || 0}</Text>
                 <Text style={styles.citasCounterLabel}>citas</Text>
                 {citasActivas > 0 && (
                   <View style={styles.citasActivasBadge}>
@@ -364,10 +427,10 @@ export default function ListarPacientes({ navigation }) {
       <Text style={styles.emptyText}>
         {user?.role === 'medico' 
           ? 'No tienes pacientes con citas programadas'
-          : 'No hay pacientes registrados'
+          : 'No hay pacientes registrados en el sistema'
         }
       </Text>
-      {user?.role === 'admin' && (
+      {(user?.role === 'admin' || user?.role === 'medico') && (
         <TouchableOpacity
           style={styles.emptyButton}
           onPress={() => navigation.navigate('Crear_EditarPacientes')}
@@ -392,7 +455,10 @@ export default function ListarPacientes({ navigation }) {
             </View>
             <View>
               <Text style={styles.appName}>Citas Medicas</Text>
-              <Text style={styles.appSubtitle}>Tu salud en tus manos</Text>
+              <Text style={styles.appSubtitle}>
+                {user?.role === 'admin' ? 'Panel de administracion' : 
+                 user?.role === 'medico' ? 'Portal medico' : 'Tu salud en tus manos'}
+              </Text>
             </View>
           </View>
           <TouchableOpacity style={styles.profileButton}>
@@ -404,7 +470,7 @@ export default function ListarPacientes({ navigation }) {
           <Text style={styles.screenTitle}>
             {user?.role === 'medico' ? 'Mis Pacientes' : 'Pacientes'}
           </Text>
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'medico') && (
             <TouchableOpacity
               style={styles.newButton}
               onPress={() => navigation.navigate('Crear_EditarPacientes')}
@@ -770,6 +836,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#2196F3',
     fontWeight: '500',
+  },
+  sinCitasInfo: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+  },
+  sinCitasText: {
+    fontSize: 13,
+    color: '#999',
+    marginTop: 8,
   },
   accionesPaciente: {
     flexDirection: 'row',

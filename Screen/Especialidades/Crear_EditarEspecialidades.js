@@ -31,7 +31,7 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
         cargarDatosEspecialidad();
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo cargar la información inicial');
+      Alert.alert('Error', 'No se pudo cargar la informacion inicial');
     } finally {
       setLoadingData(false);
     }
@@ -43,7 +43,6 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
       if (authData.isAuthenticated) {
         setUser(authData.user);
         
-        // Verificar si es administrador
         if (authData.user.role !== 'admin') {
           Alert.alert(
             'Sin permisos',
@@ -55,12 +54,12 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
       } else {
         Alert.alert(
           'No autenticado',
-          'Debes iniciar sesión para continuar',
+          'Debes iniciar sesion para continuar',
           [{ text: 'OK', onPress: () => navigation.goBack() }]
         );
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo cargar la información del usuario');
+      Alert.alert('Error', 'No se pudo cargar la informacion del usuario');
     }
   };
 
@@ -77,11 +76,9 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
   const handleInputChange = (field, value) => {
     let processedValue = value;
     
-    // Procesar valores específicos según el campo
     if (field === 'activo') {
       processedValue = value;
     } else if (field === 'nombre') {
-      // Capitalizar primera letra de cada palabra para nombres de especialidades
       processedValue = value.replace(/\b\w/g, l => l.toUpperCase());
     }
 
@@ -90,7 +87,6 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
       [field]: processedValue
     }));
     
-    // Limpiar error si existe
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
@@ -102,7 +98,6 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
   const validateForm = () => {
     const newErrors = {};
 
-    // Validar nombre (obligatorio)
     if (!formData.nombre.trim()) {
       newErrors.nombre = 'El nombre de la especialidad es obligatorio';
     } else if (formData.nombre.trim().length < 3) {
@@ -111,9 +106,8 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
       newErrors.nombre = 'El nombre no puede exceder 100 caracteres';
     }
 
-    // Validar descripción (opcional pero con límites)
     if (formData.descripcion.trim().length > 500) {
-      newErrors.descripcion = 'La descripción no puede exceder 500 caracteres';
+      newErrors.descripcion = 'La descripcion no puede exceder 500 caracteres';
     }
 
     setErrors(newErrors);
@@ -127,7 +121,7 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
     }
 
     if (!user || user.role !== 'admin') {
-      Alert.alert('Error', 'No tienes permisos para realizar esta acción');
+      Alert.alert('Error', 'No tienes permisos para realizar esta accion');
       return;
     }
 
@@ -135,11 +129,11 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
       const tokenVerification = await AuthService.verifyToken();
       
       if (!tokenVerification.success) {
-        Alert.alert('Error', 'Tu sesión ha expirado. Por favor inicia sesión nuevamente.');
+        Alert.alert('Error', 'Tu sesion ha expirado. Por favor inicia sesion nuevamente.');
         return;
       }
     } catch (error) {
-      Alert.alert('Error', 'Problema de autenticación. Por favor inicia sesión nuevamente.');
+      Alert.alert('Error', 'Problema de autenticacion. Por favor inicia sesion nuevamente.');
       return;
     }
 
@@ -161,7 +155,7 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
 
       if (response && (response.data || response.success)) {
         Alert.alert(
-          'Éxito',
+          'exito',
           isEditing ? 'Especialidad actualizada correctamente' : 'Especialidad creada correctamente',
           [
             {
@@ -189,7 +183,7 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
             }
             break;
           case 403:
-            errorMessage = 'No tienes permisos para realizar esta acción';
+            errorMessage = 'No tienes permisos para realizar esta accion';
             break;
           case 422:
             if (data.errors) {
@@ -198,11 +192,11 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
                 return `• ${field}: ${errorArray.join(', ')}`;
               }).join('\n');
               
-              errorMessage = `Errores de validación:\n${errorsList}`;
+              errorMessage = `Errores de validacion:\n${errorsList}`;
             } else if (data.message) {
               errorMessage = data.message;
             } else {
-              errorMessage = 'Datos inválidos - revisa los campos del formulario';
+              errorMessage = 'Datos invalidos - revisa los campos del formulario';
             }
             break;
           case 409:
@@ -285,23 +279,6 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
     >
       <StatusBar style="dark" />
 
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>
-            {isEditing ? 'Editar Especialidad' : 'Nueva Especialidad'}
-          </Text>
-          <Text style={styles.headerSubtitle}>
-            {isEditing ? 'Modifica los datos de la especialidad' : 'Completa la información de la especialidad'}
-          </Text>
-        </View>
-      </View>
-
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.formContainer}
@@ -310,20 +287,20 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
         <View style={styles.infoContainer}>
           <Ionicons name="information-circle" size={20} color="#2196F3" />
           <Text style={styles.infoText}>
-            Como administrador, puedes crear y editar especialidades médicas. Las especialidades activas estarán disponibles para asignar a los médicos.
+            Como administrador, puedes crear y editar especialidades medicas. Las especialidades activas estaran disponibles para asignar a los medicos.
           </Text>
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="medical-outline" size={20} color="#2196F3" />
-            <Text style={styles.sectionTitle}>Información de la Especialidad</Text>
+            <Text style={styles.sectionTitle}>Informacion de la Especialidad</Text>
           </View>
 
           {renderInput(
             'Nombre de la Especialidad',
             'nombre',
-            'Ej: Cardiología, Pediatría, Neurología...',
+            'Ej: Cardiologia, Pediatria, Neurologia...',
             'default',
             false,
             100,
@@ -331,9 +308,9 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
           )}
 
           {renderInput(
-            'Descripción',
+            'Descripcion',
             'descripcion',
-            'Descripción opcional de la especialidad...',
+            'Descripcion opcional de la especialidad...',
             'default',
             true,
             500,

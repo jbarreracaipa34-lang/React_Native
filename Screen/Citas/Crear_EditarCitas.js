@@ -12,6 +12,9 @@ export default function Crear_EditarCita({ navigation, route }) {
   const [pacientes, setPacientes] = useState([]);
   const [medicos, setMedicos] = useState([]);
   const [pacienteInfo, setPacienteInfo] = useState(null);
+  const [horariosDisponibles, setHorariosDisponibles] = useState([]);
+  const [loadingHorarios, setLoadingHorarios] = useState(false);
+  const [citasExistentes, setCitasExistentes] = useState([]);
   const [formData, setFormData] = useState({
     pacientes_id: '',
     medicos_id: '',
@@ -24,6 +27,7 @@ export default function Crear_EditarCita({ navigation, route }) {
   
   const citaAEditar = route?.params?.cita;
   const isEditing = !!citaAEditar;
+  const [ultimaConsultaHorarios, setUltimaConsultaHorarios] = useState({ medicoId: null });
 
   useEffect(() => {
     loadInitialData();
@@ -38,13 +42,49 @@ export default function Crear_EditarCita({ navigation, route }) {
     }
   }, [user, pacientes, medicos, isEditing]);
 
+  useEffect(() => {
+    if (formData.medicos_id && formData.medicos_id !== ultimaConsultaHorarios.medicoId) {
+      setUltimaConsultaHorarios({ medicoId: formData.medicos_id });
+      obtenerHorariosDisponibles(formData.medicos_id);
+      obtenerCitasExistentes(formData.medicos_id);
+    } else if (!formData.medicos_id) {
+      setHorariosDisponibles([]);
+      setCitasExistentes([]);
+      setUltimaConsultaHorarios({ medicoId: null });
+    }
+  }, [formData.medicos_id]);
+
+  const obtenerCitasExistentes = async (medicoId) => {
+    try {
+      const response = await AuthService.getCitas();
+      const citasData = response?.data || response || [];
+      
+      if (citasData.length === 0) {
+        setCitasExistentes([]);
+        return;
+      }
+      
+      const citasMedico = citasData.filter(cita => {
+        const medicoIdDeLaCita = cita.medicos_id || cita.medico_id || cita.doctorId || cita.doctor_id;
+        const medicoMatch = String(medicoIdDeLaCita) === String(medicoId);
+        const estadoValido = ['confirmada', 'pendiente', 'confirmed', 'pending'].includes(cita.estado?.toLowerCase());
+        const noEsLaCitaActual = isEditing ? cita.id !== citaAEditar?.id : true;
+        
+        return medicoMatch && estadoValido && noEsLaCitaActual;
+      });
+      
+      setCitasExistentes(citasMedico);
+    } catch (error) {
+      setCitasExistentes([]);
+    }
+  };
+
   const obtenerInfoPaciente = async () => {
     try {
       const pacienteEncontrado = pacientes.find(paciente => {
         const nombreCoincide = paciente.nombre && (user.nombre || user.name) && 
           paciente.nombre.toLowerCase().trim() === (user.nombre || user.name).toLowerCase().trim();
-        const userIdCoincide = paciente.user_id && 
-          String(paciente.user_id) === String(user.id);
+        const userIdCoincide = paciente.user_id && String(paciente.user_id) === String(user.id);
         return nombreCoincide || userIdCoincide;
       });
       
@@ -52,24 +92,110 @@ export default function Crear_EditarCita({ navigation, route }) {
         setPacienteInfo(pacienteEncontrado);
       }
     } catch (error) {
-      console.error('Error obteniendo info del paciente:', error);
     }
+  };
+
+  const obtenerHorariosDisponibles = async (medicoId) => {
+    if (!medicoId) {
+      setHorariosDisponibles([]);
+      return;
+    }
+
+    try {
+      setLoadingHorarios(true);
+      const response = await AuthService.getHorariosDisponiblesPorMedico();
+      const horariosData = response?.data || response || [];
+      
+      const medicoSeleccionado = medicos.find(m => String(m.id) === String(medicoId));
+      
+      if (!medicoSeleccionado) {
+        setHorariosDisponibles([]);
+        return;
+      }
+      
+      const horariosFiltrados = horariosData.filter(horario => {
+        const nombreMatch = horario.nombre?.toLowerCase().trim() === medicoSeleccionado.nombre?.toLowerCase().trim();
+        const apellidoMatch = horario.apellido?.toLowerCase().trim() === medicoSeleccionado.apellido?.toLowerCase().trim();
+        return nombreMatch && apellidoMatch;
+      });
+
+      let horasDisponibles = [];
+      
+      if (horariosFiltrados.length > 0) {
+        const diasSemana = {
+          'L': 'Lun', 'M': 'Mar', 'X': 'Mie', 'J': 'Jue', 'V': 'Vie', 'S': 'Sab',
+          'lunes': 'Lun', 'martes': 'Mar', 'miercoles': 'Mie', 'miercoles': 'Mie',
+          'jueves': 'Jue', 'viernes': 'Vie', 'sabado': 'Sab', 'sabado': 'Sab'
+        };
+
+        horariosFiltrados.forEach(horario => {
+          const dia = horario.diaSemana || horario.dia || horario.day || horario.day_of_week;
+          const horaInicio = horario.horaInicio || horario.hora_inicio || horario.start_time;
+          const horaFin = horario.horaFin || horario.hora_fin || horario.end_time;
+          
+          if (dia && horaInicio) {
+            const diaAbrev = diasSemana[dia] || dia;
+            const formatearHora = (hora) => hora ? hora.split(':').slice(0, 2).join(':') : '';
+            
+            const horaInicioFormateada = formatearHora(horaInicio);
+            const horaFinFormateada = horaFin ? formatearHora(horaFin) : horaInicioFormateada;
+            const bloqueHorario = horaFin ? `${horaInicioFormateada}-${horaFinFormateada}` : horaInicioFormateada;
+            
+            horasDisponibles.push({
+              value: `${diaAbrev}_${horaInicioFormateada}_${horaFinFormateada}`,
+              label: `${diaAbrev} ${bloqueHorario}`,
+              dia: diaAbrev,
+              horaInicio: horaInicioFormateada,
+              horaFin: horaFinFormateada,
+              horarioId: `${dia}_${horaInicio}`
+            });
+          }
+        });
+      }
+
+      setHorariosDisponibles(horasDisponibles);
+    } catch (error) {
+      setHorariosDisponibles([]);
+    } finally {
+      setLoadingHorarios(false);
+    }
+  };
+
+  const isHorarioOcupado = (horarioOption) => {
+    return citasExistentes.some(cita => {
+      const fechaQueSeGeneraria = obtenerProximaFechaPorDia(horarioOption.dia);
+      const fechaCoincide = cita.fechaCita === fechaQueSeGeneraria;
+      
+      if (!fechaCoincide) return false;
+      
+      const normalizarHora = (hora) => hora ? hora.split(':').slice(0, 2).join(':') : '';
+      const horaCitaNormalizada = normalizarHora(cita.horaCita);
+      const horaInicioNormalizada = normalizarHora(horarioOption.horaInicio);
+      const horaFinNormalizada = normalizarHora(horarioOption.horaFin);
+      
+      let horaCoincide = false;
+      if (horaCitaNormalizada && horaInicioNormalizada) {
+        if (horaFinNormalizada && horaInicioNormalizada !== horaFinNormalizada) {
+          horaCoincide = horaCitaNormalizada >= horaInicioNormalizada && horaCitaNormalizada <= horaFinNormalizada;
+        } else {
+          horaCoincide = horaCitaNormalizada === horaInicioNormalizada;
+        }
+      }
+      
+      return fechaCoincide && horaCoincide;
+    });
   };
 
   const loadInitialData = async () => {
     try {
       setLoadingData(true);
-      await Promise.all([
-        loadUserData(),
-        loadPacientes(),
-        loadMedicos()
-      ]);
+      await Promise.all([loadUserData(), loadPacientes(), loadMedicos()]);
       
       if (isEditing && citaAEditar) {
-        cargarDatosCita();
+        await cargarDatosCita();
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo cargar la información inicial');
+      Alert.alert('Error', 'No se pudo cargar la informacion inicial');
     } finally {
       setLoadingData(false);
     }
@@ -82,7 +208,7 @@ export default function Crear_EditarCita({ navigation, route }) {
         setUser(authData.user);
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo cargar la información del usuario');
+      Alert.alert('Error', 'No se pudo cargar la informacion del usuario');
     }
   };
 
@@ -99,15 +225,9 @@ export default function Crear_EditarCita({ navigation, route }) {
       }
       
       const response = await AuthService.getPacientes();
-      
-      if (response && response.data) {
-        setPacientes(response.data);
-      } else if (response && Array.isArray(response)) {
-        setPacientes(response);
-      }
+      const data = response?.data || response || [];
+      setPacientes(data);
     } catch (error) {
-      console.error('Error cargando pacientes:', error);
-      
       if (user?.role === 'paciente' && error.response?.status === 403) {
         setPacientes([{
           id: user.id,
@@ -117,7 +237,6 @@ export default function Crear_EditarCita({ navigation, route }) {
         }]);
         return;
       }
-      
       Alert.alert('Error', 'No se pudieron cargar los pacientes');
     }
   };
@@ -127,7 +246,6 @@ export default function Crear_EditarCita({ navigation, route }) {
       const response = await AuthService.getEspecialidades();
       return response?.data || response || [];
     } catch (error) {
-      console.error('Error obteniendo especialidades:', error);
       return [];
     }
   };
@@ -145,14 +263,7 @@ export default function Crear_EditarCita({ navigation, route }) {
       }
 
       const response = await AuthService.getMedicos();
-      let medicosData = [];
-      
-      if (response && response.data) {
-        medicosData = response.data;
-      } else if (response && Array.isArray(response)) {
-        medicosData = response;
-      }
-
+      let medicosData = response?.data || response || [];
       const especialidades = await obtenerEspecialidades();
 
       const especialidadesMap = {};
@@ -160,24 +271,15 @@ export default function Crear_EditarCita({ navigation, route }) {
         especialidadesMap[esp.id] = esp.nombre || esp.name || esp.title || 'Sin nombre';
       });
 
-
-      const medicosConEspecialidad = medicosData.map(medico => {
-        let especialidad = 'Sin especialidad';
-        
-        if (medico.especialidad_id && especialidadesMap[medico.especialidad_id]) {
-          especialidad = especialidadesMap[medico.especialidad_id];
-        }
-        
-        return {
-          ...medico,
-          especialidad: especialidad
-        };
-      });
+      const medicosConEspecialidad = medicosData.map(medico => ({
+        ...medico,
+        especialidad: medico.especialidad_id && especialidadesMap[medico.especialidad_id] 
+          ? especialidadesMap[medico.especialidad_id] 
+          : 'Sin especialidad'
+      }));
 
       setMedicos(medicosConEspecialidad);
     } catch (error) {
-      console.error('Error cargando médicos:', error);
-      
       if (user?.role === 'medico' && error.response?.status === 403) {
         setMedicos([{
           id: user.id,
@@ -187,32 +289,32 @@ export default function Crear_EditarCita({ navigation, route }) {
         }]);
         return;
       }
-      
-      Alert.alert('Error', 'No se pudieron cargar los médicos');
+      Alert.alert('Error', 'No se pudieron cargar los medicos');
     }
   };
 
-  const cargarDatosCita = () => {
-    if (citaAEditar) {
-      let horaFormateada = citaAEditar.horaCita;
-      if (horaFormateada && horaFormateada.includes(':')) {
-        const partesHora = horaFormateada.split(':');
-        horaFormateada = `${partesHora[0]}:${partesHora[1]}`;
-      }
+  const cargarDatosCita = async () => {
+    if (!citaAEditar) return;
 
-      let observacionesProcesadas = '';
-      if (citaAEditar.observaciones !== null && citaAEditar.observaciones !== undefined) {
-        observacionesProcesadas = String(citaAEditar.observaciones);
-      }
+    const horaFormateada = citaAEditar.horaCita?.split(':').slice(0, 2).join(':') || '';
+    const observacionesProcesadas = String(citaAEditar.observaciones || '');
 
-      setFormData({
-        pacientes_id: String(citaAEditar.pacientes_id || ''),
-        medicos_id: String(citaAEditar.medicos_id || ''),
-        fechaCita: citaAEditar.fechaCita || '',
-        horaCita: horaFormateada || '',
-        estado: citaAEditar.estado || 'pendiente',
-        observaciones: observacionesProcesadas
-      });
+    const newFormData = {
+      pacientes_id: String(citaAEditar.pacientes_id || ''),
+      medicos_id: String(citaAEditar.medicos_id || ''),
+      fechaCita: citaAEditar.fechaCita || '',
+      horaCita: horaFormateada,
+      estado: citaAEditar.estado || 'pendiente',
+      observaciones: observacionesProcesadas
+    };
+
+    setFormData(newFormData);
+
+    if (newFormData.medicos_id) {
+      await Promise.all([
+        obtenerHorariosDisponibles(newFormData.medicos_id),
+        obtenerCitasExistentes(newFormData.medicos_id)
+      ]);
     }
   };
 
@@ -222,13 +324,11 @@ export default function Crear_EditarCita({ navigation, route }) {
     setFormData(prev => {
       const newFormData = { ...prev };
       
-      if (user.role === 'paciente' && pacienteInfo) {
-        newFormData.pacientes_id = String(pacienteInfo.id);
-      } else if (user.role === 'paciente' && pacientes.length > 0) {
-        newFormData.pacientes_id = String(user.id);
+      if (user.role === 'paciente') {
+        newFormData.pacientes_id = String(pacienteInfo?.id || user.id);
       }
       
-      if (user.role === 'medico' && medicos.length > 0) {
+      if (user.role === 'medico') {
         newFormData.medicos_id = String(user.id);
       }
       
@@ -237,53 +337,70 @@ export default function Crear_EditarCita({ navigation, route }) {
   };
 
   const handleInputChange = (field, value) => {
-    if (isEditing && user?.role === 'medico') {
-      if (field !== 'observaciones' && field !== 'estado') {
-        return;
-      }
+    if (isEditing && user?.role === 'medico' && field !== 'observaciones' && field !== 'estado') {
+      return;
     }
 
     if (isEditing && user?.role === 'paciente') {
       const pacientePuedeEditar = verificarSiPacientePuedeEditar();
       
-      if (!pacientePuedeEditar) {
-        if (field !== 'observaciones') {
-          Alert.alert(
-            'Sin permisos',
-            'No tienes permisos para editar esta cita. Solo puedes agregar observaciones.',
-            [{ text: 'OK' }]
-          );
-          return;
-        }
-      } else {
-        if (field === 'medicos_id' || field === 'estado') {
-          return;
-        }
+      if (!pacientePuedeEditar && field !== 'observaciones') {
+        Alert.alert('Sin permisos', 'Solo puedes agregar observaciones.', [{ text: 'OK' }]);
+        return;
+      } else if (pacientePuedeEditar && (field === 'medicos_id' || field === 'estado')) {
+        return;
       }
     }
 
-    let processedValue = value;
-    if (field === 'observaciones') {
-      processedValue = value === null || value === undefined ? '' : String(value);
+    let processedValue = field === 'observaciones' ? String(value || '') : value;
+
+    if (field === 'horaCita' && value) {
+      const horarioSeleccionado = horariosDisponibles.find(h => h.value === value);
+      if (horarioSeleccionado) {
+        const fechaParaCita = obtenerProximaFechaPorDia(horarioSeleccionado.dia);
+        setFormData(prev => ({
+          ...prev,
+          fechaCita: fechaParaCita,
+          horaCita: horarioSeleccionado.horaInicio
+        }));
+      }
+      return;
     }
 
-    setFormData(prev => ({
-      ...prev,
-      [field]: processedValue
-    }));
+    setFormData(prev => ({ ...prev, [field]: processedValue }));
     
     if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: null
-      }));
+      setErrors(prev => ({ ...prev, [field]: null }));
     }
   };
 
-  const verificarSiPacientePuedeEditar = () => {
-    if (!citaAEditar || !user || user.role !== 'paciente') {
-      return false;
+  const obtenerProximaFechaPorDia = (diaNombre) => {
+    const diasSemana = { 'Lun': 1, 'Mar': 2, 'Mie': 3, 'Jue': 4, 'Vie': 5, 'Sab': 6, 'Dom': 0 };
+    const hoy = new Date();
+    const diaObjetivo = diasSemana[diaNombre];
+    const diaActual = hoy.getDay();
+    
+    let diasHastaObjetivo;
+    if (diaObjetivo > diaActual) {
+      diasHastaObjetivo = diaObjetivo - diaActual;
+    } else if (diaObjetivo < diaActual) {
+      diasHastaObjetivo = 7 - diaActual + diaObjetivo;
+    } else {
+      diasHastaObjetivo = 7;
     }
+    
+    const fechaObjetivo = new Date(hoy);
+    fechaObjetivo.setDate(hoy.getDate() + diasHastaObjetivo);
+    
+    const year = fechaObjetivo.getFullYear();
+    const month = String(fechaObjetivo.getMonth() + 1).padStart(2, '0');
+    const day = String(fechaObjetivo.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+  };
+
+  const verificarSiPacientePuedeEditar = () => {
+    if (!citaAEditar || !user || user.role !== 'paciente') return false;
     
     const userIdActual = String(user.id);
     const citaUserId = String(citaAEditar.user_id || '');
@@ -291,18 +408,9 @@ export default function Crear_EditarCita({ navigation, route }) {
     
     const puedeEditarPorUserId = citaUserId === userIdActual;
     const puedeEditarPorPacienteId = citaPacientesId === userIdActual;
-    
-    let puedeEditarPorPacienteInfo = false;
-    if (pacienteInfo && citaAEditar.pacientes_id) {
-      puedeEditarPorPacienteInfo = String(citaAEditar.pacientes_id) === String(pacienteInfo.id);
-    }
-    
-    const puedeEditarPorDatos = (
-      citaAEditar.paciente_nombre && 
-      (user.nombre || user.name)
-    ) && (
-      citaAEditar.paciente_nombre.toLowerCase().trim() === (user.nombre || user.name || '').toLowerCase().trim()
-    );
+    const puedeEditarPorPacienteInfo = pacienteInfo && String(citaAEditar.pacientes_id) === String(pacienteInfo.id);
+    const puedeEditarPorDatos = citaAEditar.paciente_nombre && (user.nombre || user.name) &&
+      citaAEditar.paciente_nombre.toLowerCase().trim() === (user.nombre || user.name || '').toLowerCase().trim();
     
     return puedeEditarPorUserId || puedeEditarPorPacienteId || puedeEditarPorPacienteInfo || puedeEditarPorDatos;
   };
@@ -319,7 +427,7 @@ export default function Crear_EditarCita({ navigation, route }) {
     }
 
     if (!formData.medicos_id) {
-      newErrors.medicos_id = 'El médico es obligatorio';
+      newErrors.medicos_id = 'El medico es obligatorio';
     }
 
     if (!formData.fechaCita.trim()) {
@@ -327,14 +435,14 @@ export default function Crear_EditarCita({ navigation, route }) {
     } else {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(formData.fechaCita)) {
-        newErrors.fechaCita = 'Formato de fecha inválido (YYYY-MM-DD)';
+        newErrors.fechaCita = 'Formato de fecha invalido (YYYY-MM-DD)';
       } else {
         const date = new Date(formData.fechaCita);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
         if (isNaN(date.getTime())) {
-          newErrors.fechaCita = 'Fecha inválida';
+          newErrors.fechaCita = 'Fecha invalida';
         } else if (date < today && !isEditing) {
           newErrors.fechaCita = 'La fecha no puede ser anterior a hoy';
         }
@@ -343,11 +451,6 @@ export default function Crear_EditarCita({ navigation, route }) {
 
     if (!formData.horaCita.trim()) {
       newErrors.horaCita = 'La hora de la cita es obligatoria';
-    } else {
-      const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-      if (!timeRegex.test(formData.horaCita)) {
-        newErrors.horaCita = 'Formato de hora inválido (HH:MM)';
-      }
     }
 
     if (!formData.estado) {
@@ -359,182 +462,87 @@ export default function Crear_EditarCita({ navigation, route }) {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) {
-      Alert.alert('Error', 'Por favor corrige los errores en el formulario');
-      return;
-    }
-
-    if (!user) {
-      Alert.alert('Error', 'Sesión no válida. Por favor, reinicia la aplicación.');
+    if (!validateForm() || !user) {
+      Alert.alert('Error', !user ? 'Sesion no valida' : 'Corrige los errores en el formulario');
       return;
     }
 
     try {
       const tokenVerification = await AuthService.verifyToken();
-      
       if (!tokenVerification.success) {
-        Alert.alert('Error', 'Tu sesión ha expirado. Por favor inicia sesión nuevamente.');
+        Alert.alert('Error', 'Tu sesion ha expirado. Por favor inicia sesion nuevamente.');
         return;
       }
     } catch (error) {
-      Alert.alert('Error', 'Problema de autenticación. Por favor inicia sesión nuevamente.');
+      Alert.alert('Error', 'Problema de autenticacion. Por favor inicia sesion nuevamente.');
       return;
     }
 
     try {
       setLoading(true);
-
-      let observacionesProcessed = '';
-      
-      if (formData.observaciones !== null && formData.observaciones !== undefined) {
-        const obsValue = formData.observaciones;
-        if (typeof obsValue === 'string') {
-          observacionesProcessed = obsValue.trim();
-        } else {
-          observacionesProcessed = String(obsValue).trim();
-        }
-      }
-
-      observacionesProcessed = observacionesProcessed || '';
+      const observacionesProcessed = String(formData.observaciones || '').trim();
 
       const citaData = {
         fechaCita: formData.fechaCita.trim(),
         horaCita: formData.horaCita.trim(),
         estado: formData.estado.trim(),
-        observaciones: String(observacionesProcessed)
+        observaciones: observacionesProcessed
       };
 
       if (isEditing) {
         const baseData = {};
 
         if (user.role === 'medico') {
-          Object.assign(baseData, {
-            estado: formData.estado.trim(),
-            observaciones: String(observacionesProcessed)
-          });
+          baseData.estado = formData.estado.trim();
+          baseData.observaciones = observacionesProcessed;
         } else if (user.role === 'paciente') {
           const pacientePuedeEditar = verificarSiPacientePuedeEditar();
           if (pacientePuedeEditar) {
-            Object.assign(baseData, {
-              fechaCita: formData.fechaCita.trim(),
-              horaCita: formData.horaCita.trim(),
-              estado: formData.estado.trim(),
-              observaciones: String(observacionesProcessed) 
-            });
+            Object.assign(baseData, citaData);
           } else {
-            baseData.observaciones = String(observacionesProcessed);
+            baseData.observaciones = observacionesProcessed;
           }
         } else if (user.role === 'admin') {
-          Object.assign(baseData, {
-            fechaCita: formData.fechaCita.trim(),
-            horaCita: formData.horaCita.trim(),
-            estado: formData.estado.trim(),
-            observaciones: String(observacionesProcessed)
-          });
-          
-          if (formData.medicos_id) {
-            baseData.medicos_id = parseInt(formData.medicos_id);
-          }
-          if (formData.pacientes_id) {
-            baseData.pacientes_id = parseInt(formData.pacientes_id);
-          }
+          Object.assign(baseData, citaData);
+          if (formData.medicos_id) baseData.medicos_id = parseInt(formData.medicos_id);
+          if (formData.pacientes_id) baseData.pacientes_id = parseInt(formData.pacientes_id);
         }
 
-        Object.keys(citaData).forEach(key => delete citaData[key]);
         Object.assign(citaData, baseData);
-        
       } else {
         citaData.user_id = user.id;
         citaData.medicos_id = parseInt(formData.medicos_id);
         
         if (user.role === 'paciente') {
-          if (pacienteInfo && pacienteInfo.id) {
-            citaData.pacientes_id = parseInt(pacienteInfo.id);
-          } else {
-            citaData.pacientes_id = null;
-          }
+          citaData.pacientes_id = pacienteInfo?.id ? parseInt(pacienteInfo.id) : null;
         } else {
           citaData.pacientes_id = parseInt(formData.pacientes_id) || null;
         }
       }
       
-      if (citaData.observaciones !== undefined) {
-        citaData.observaciones = String(citaData.observaciones || '');
-      }
-      
-      let response;
-      if (isEditing) {
-        const dataToSend = {};
-        Object.keys(citaData).forEach(key => {
-          if (key === 'observaciones') {
-            dataToSend[key] = String(citaData[key] || '');
-          } else {
-            dataToSend[key] = citaData[key];
-          }
-        });
-                
-        response = await AuthService.editarCita(citaAEditar.id, dataToSend);
-      } else {
-        response = await AuthService.crearCita(citaData);
-      }
+      const response = isEditing 
+        ? await AuthService.editarCita(citaAEditar.id, citaData)
+        : await AuthService.crearCita(citaData);
 
       if (response && (response.data || response.success)) {
         Alert.alert(
-          'Éxito',
+          'Exito',
           isEditing ? 'Cita actualizada correctamente' : 'Cita creada correctamente',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.goBack()
-            }
-          ]
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
         );
       } else {
         throw new Error('Respuesta inesperada del servidor');
       }
     } catch (error) {
-      console.error('Error completo:', error);
-  
       let errorMessage = 'Error desconocido al guardar la cita';
       
       if (error.response) {
         const { status, data } = error.response;
-        
         switch (status) {
           case 500:
-            errorMessage = 'Error interno del servidor.';
-            if (data.message && data.message.includes('Integrity constraint')) {
-              errorMessage = 'Error de referencia en base de datos. El paciente o médico seleccionado no existe.';
-            } else if (data.message) {
-              errorMessage += '\nDetalle: ' + data.message;
-            }
-            break;
-          case 403:
-            if (data.debug?.user_role && data.debug?.allowed_roles) {
-              errorMessage = `Error de permisos: Tu rol (${data.debug.user_role}) no tiene acceso a esta función.\nRoles permitidos: ${data.debug.allowed_roles.join(', ')}`;
-            } else {
-              errorMessage = 'No tienes permisos para realizar esta acción';
-            }
-            break;
-          case 422:
-            if (data.errors) {
-              const errorsList = Object.entries(data.errors).map(([field, errors]) => {
-                const errorArray = Array.isArray(errors) ? errors : [errors];
-                return `• ${field}: ${errorArray.join(', ')}`;
-              }).join('\n');
-              
-              errorMessage = `Errores de validación:\n${errorsList}`;
-              
-              if (Object.keys(data.errors).length === 1) {
-                const firstError = Object.values(data.errors)[0];
-                const errorText = Array.isArray(firstError) ? firstError[0] : firstError;
-                errorMessage = `Error de validación: ${errorText}`;
-              }
-            } else if (data.message) {
-              errorMessage = data.message;
-            } else {
-              errorMessage = 'Datos inválidos - revisa los campos del formulario';
-            }
+            errorMessage = data.message?.includes('Integrity constraint') 
+              ? 'Error de referencia en base de datos. El paciente o medico seleccionado no existe.'
+              : data.message || 'Error interno del servidor';
             break;
           case 409:
             errorMessage = 'Ya existe una cita para este paciente en la fecha y hora seleccionada';
@@ -554,7 +562,6 @@ export default function Crear_EditarCita({ navigation, route }) {
 
   const formatDateInput = (text) => {
     const numbers = text.replace(/\D/g, '');
-    
     let formatted = numbers;
     if (numbers.length >= 5) {
       formatted = numbers.substring(0, 4) + '-' + numbers.substring(4, 6);
@@ -562,56 +569,23 @@ export default function Crear_EditarCita({ navigation, route }) {
         formatted += '-' + numbers.substring(6, 8);
       }
     }
-    
-    return formatted;
-  };
-
-  const formatTimeInput = (text) => {
-    const numbers = text.replace(/\D/g, '');
-    
-    let formatted = numbers;
-    if (numbers.length >= 3) {
-      formatted = numbers.substring(0, 2) + ':' + numbers.substring(2, 4);
-    }
-    
     return formatted;
   };
 
   const isFieldDisabled = (field) => {
-    if (!isEditing && user?.role === 'paciente' && field === 'pacientes_id') {
-      return true;
-    }
-    
-    if (!isEditing && user?.role === 'medico' && field === 'medicos_id') {
-      return true;
-    }
-    
-    if (isEditing && user?.role === 'medico') {
-      return field !== 'observaciones' && field !== 'estado';
-    }
-    
+    if (!isEditing && user?.role === 'paciente' && field === 'pacientes_id') return true;
+    if (!isEditing && user?.role === 'medico' && field === 'medicos_id') return true;
+    if (isEditing && user?.role === 'medico') return field !== 'observaciones' && field !== 'estado';
     if (isEditing && user?.role === 'paciente') {
       const pacientePuedeEditar = verificarSiPacientePuedeEditar();
-      
-      if (!pacientePuedeEditar) {
-        return field !== 'observaciones';
-      }
-      
-      return field === 'medicos_id' || field === 'estado';
+      return !pacientePuedeEditar ? field !== 'observaciones' : field === 'medicos_id' || field === 'estado';
     }
-    
     return false;
   };
 
   const shouldShowField = (field) => {
-    if (user?.role === 'paciente' && field === 'pacientes_id') {
-      return false;
-    }
-    
-    if (user?.role === 'medico' && field === 'medicos_id') {
-      return false;
-    }
-    
+    if (user?.role === 'paciente' && field === 'pacientes_id') return false;
+    if (user?.role === 'medico' && field === 'medicos_id') return false;
     return true;
   };
 
@@ -621,37 +595,24 @@ export default function Crear_EditarCita({ navigation, route }) {
     return (
       <View style={styles.inputContainer}>
         <Text style={styles.inputLabel}>
-          Médico
-          <Text style={styles.required}> *</Text>
-          {disabled && (
-            <Text style={styles.disabledText}> (Solo lectura)</Text>
-          )}
+          Medico<Text style={styles.required}> *</Text>
+          {disabled && <Text style={styles.disabledText}> (Solo lectura)</Text>}
         </Text>
-        <View style={[
-          styles.pickerContainer, 
-          errors['medicos_id'] && styles.inputError,
-          disabled && styles.inputDisabled
-        ]}>
+        <View style={[styles.pickerContainer, errors['medicos_id'] && styles.inputError, disabled && styles.inputDisabled]}>
           <Picker
             selectedValue={formData.medicos_id}
             onValueChange={(value) => handleInputChange('medicos_id', value)}
             style={[styles.picker, disabled && styles.pickerDisabled]}
             enabled={!disabled}
           >
-            <Picker.Item label="Seleccionar médico" value="" />
-            {medicos.map((medico) => {
-              const nombreCompleto = `${medico.nombre} ${medico.apellido}`.trim();
-              const especialidadTexto = medico.especialidad;
-              const labelCompleto = `${nombreCompleto} - ${especialidadTexto}`;
-                            
-              return (
-                <Picker.Item
-                  key={medico.id}
-                  label={labelCompleto}
-                  value={String(medico.id)}
-                />
-              );
-            })}
+            <Picker.Item label="Seleccionar medico" value="" />
+            {medicos.map((medico) => (
+              <Picker.Item
+                key={medico.id}
+                label={`${medico.nombre} ${medico.apellido} - ${medico.especialidad}`.trim()}
+                value={String(medico.id)}
+              />
+            ))}
           </Picker>
         </View>
         {errors['medicos_id'] && <Text style={styles.errorText}>{errors['medicos_id']}</Text>}
@@ -659,27 +620,68 @@ export default function Crear_EditarCita({ navigation, route }) {
     );
   };
 
-  const renderInput = (
-    label,
-    field,
-    placeholder,
-    keyboardType = 'default',
-    multiline = false,
-    maxLength = null,
-    required = false
-  ) => {
+  const renderHoraCitaPicker = () => {
+    const disabled = isFieldDisabled('horaCita');
+    const mostrarPicker = formData.medicos_id;
+    const horariosLibres = horariosDisponibles.filter(horario => !isHorarioOcupado(horario));
+    
+    return (
+      <View style={styles.inputContainer}>
+        {!mostrarPicker ? (
+          <View style={styles.infoContainerSmall}>
+            <Text style={styles.infoTextSmall}>
+              Selecciona un medico para ver los horarios disponibles
+            </Text>
+          </View>
+        ) : (
+          <View style={[styles.pickerContainer, errors['horaCita'] && styles.inputError, disabled && styles.inputDisabled]}>
+            <Picker
+              selectedValue={formData.horaCita ? 
+                horariosDisponibles.find(h => h.horaInicio === formData.horaCita)?.value || '' : ''}
+              onValueChange={(value) => handleInputChange('horaCita', value)}
+              style={[styles.picker, disabled && styles.pickerDisabled]}
+              enabled={!disabled && !loadingHorarios}
+            >
+              <Picker.Item 
+                label={loadingHorarios ? "Cargando horarios..." : 
+                       horariosLibres.length === 0 ? "No hay horarios disponibles" : "Seleccionar horario"} 
+                value="" 
+              />
+              {horariosLibres.map((horario) => (
+                <Picker.Item key={horario.value} label={horario.label} value={horario.value} />
+              ))}
+            </Picker>
+          </View>
+        )}
+        
+        {errors['horaCita'] && <Text style={styles.errorText}>{errors['horaCita']}</Text>}
+        
+        {mostrarPicker && horariosLibres.length === 0 && !loadingHorarios && (
+          <Text style={styles.infoTextSmall}>
+            {horariosDisponibles.length === 0 
+              ? "Este medico no tiene horarios configurados"
+              : "Todos los horarios de este medico estan ocupados"}
+          </Text>
+        )}
+
+        {mostrarPicker && horariosDisponibles.length > horariosLibres.length && horariosLibres.length > 0 && (
+          <Text style={styles.infoTextSmall}>
+            {horariosDisponibles.length - horariosLibres.length} horario(s) ocupado(s)
+          </Text>
+        )}
+      </View>
+    );
+  };
+
+  const renderInput = (label, field, placeholder, keyboardType = 'default', multiline = false, maxLength = null, required = false) => {
     const disabled = isFieldDisabled(field);
     
     return (
       <View style={styles.inputContainer}>
         <Text style={styles.inputLabel}>
           {label}
-          {required && (
-            <Text style={styles.required}> *</Text>
-          )}
-          {disabled && (
-            <Text style={styles.disabledText}> (Solo lectura)</Text>
-          )}
+          {required && <Text style={styles.required}> *</Text>}
+          {disabled && <Text style={styles.disabledText}> (Solo lectura)</Text>}
         </Text>
         <TextInput
           style={[
@@ -692,8 +694,6 @@ export default function Crear_EditarCita({ navigation, route }) {
           onChangeText={(value) => {
             if (field === 'fechaCita') {
               handleInputChange(field, formatDateInput(value));
-            } else if (field === 'horaCita') {
-              handleInputChange(field, formatTimeInput(value));
             } else {
               handleInputChange(field, value);
             }
@@ -713,9 +713,7 @@ export default function Crear_EditarCita({ navigation, route }) {
   };
 
   const renderPicker = (label, field, options, required = false) => {
-    if (!shouldShowField(field)) {
-      return null;
-    }
+    if (!shouldShowField(field)) return null;
     
     const disabled = isFieldDisabled(field);
     
@@ -724,15 +722,9 @@ export default function Crear_EditarCita({ navigation, route }) {
         <Text style={styles.inputLabel}>
           {label}
           {required && <Text style={styles.required}> *</Text>}
-          {disabled && (
-            <Text style={styles.disabledText}> (Solo lectura)</Text>
-          )}
+          {disabled && <Text style={styles.disabledText}> (Solo lectura)</Text>}
         </Text>
-        <View style={[
-          styles.pickerContainer, 
-          errors[field] && styles.inputError,
-          disabled && styles.inputDisabled
-        ]}>
+        <View style={[styles.pickerContainer, errors[field] && styles.inputError, disabled && styles.inputDisabled]}>
           <Picker
             selectedValue={formData[field]}
             onValueChange={(value) => handleInputChange(field, value)}
@@ -741,11 +733,7 @@ export default function Crear_EditarCita({ navigation, route }) {
           >
             <Picker.Item label={`Seleccionar ${label.toLowerCase()}`} value="" />
             {options.map((option) => (
-              <Picker.Item
-                key={option.value}
-                label={option.label}
-                value={option.value}
-              />
+              <Picker.Item key={option.value} label={option.label} value={option.value} />
             ))}
           </Picker>
         </View>
@@ -755,49 +743,25 @@ export default function Crear_EditarCita({ navigation, route }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <StatusBar style="dark" />
 
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>
-            {isEditing ? 'Editar Cita' : 'Nueva Cita'}
-          </Text>
-          <Text style={styles.headerSubtitle}>
-            {isEditing ? 'Modifica los datos de la cita' : 'Completa la información de la cita'}
-          </Text>
-        </View>
-      </View>
-
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.formContainer}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.formContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.infoContainer}>
           <Ionicons name="information-circle" size={20} color="#2196F3" />
           <Text style={styles.infoText}>
-            {user?.role === 'medico' && 'Como médico, esta cita será asignada automáticamente a ti.'}
-            {user?.role === 'paciente' && 'Como paciente, esta cita será creada automáticamente para ti.'}
-            {user?.role === 'admin' && 'Como administrador, puedes asignar cualquier médico y paciente (opcional). Las observaciones son opcionales.'}
+            {user?.role === 'medico' && 'Como medico, esta cita sera asignada automaticamente a ti.'}
+            {user?.role === 'paciente' && !isEditing && 'Como paciente, esta cita sera creada automaticamente para ti.'}
+            {user?.role === 'paciente' && isEditing && 'Como paciente, no puedes cambiar el medico ni el estado de la cita.'}
+            {user?.role === 'admin' && 'Como administrador, puedes asignar cualquier medico y paciente (opcional). Las observaciones son opcionales.'}
             {isEditing && user?.role === 'medico' && ' Solo puedes editar las observaciones y el estado de la cita.'}
-            {isEditing && user?.role === 'paciente' && ' No puedes cambiar el médico ni el estado de la cita.'}
           </Text>
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="people-outline" size={20} color="#2196F3" />
-            <Text style={styles.sectionTitle}>Información de la Cita</Text>
+            <Text style={styles.sectionTitle}>Informacion de la Cita</Text>
           </View>
 
           {renderPicker(
@@ -811,26 +775,21 @@ export default function Crear_EditarCita({ navigation, route }) {
           )}
 
           {shouldShowField('medicos_id') && renderMedicoPicker()}
+          {renderHoraCitaPicker()}
 
-          {renderInput(
-            'Fecha de la Cita',
-            'fechaCita',
-            'YYYY-MM-DD (Ej: 2024-12-31)',
-            'numeric',
-            false,
-            10,
-            true
-          )}
-
-          {renderInput(
-            'Hora de la Cita',
-            'horaCita',
-            'HH:MM (Ej: 14:30)',
-            'numeric',
-            false,
-            5,
-            true
-          )}
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>
+              Fecha de la Cita<Text style={styles.required}> *</Text>
+              <Text style={styles.disabledText}> (Generada automaticamente)</Text>
+            </Text>
+            <TextInput
+              style={[styles.textInput, styles.inputDisabled]}
+              value={formData.fechaCita || ''}
+              placeholder="Se generara al seleccionar horario"
+              editable={false}
+            />
+            {errors['fechaCita'] && <Text style={styles.errorText}>{errors['fechaCita']}</Text>}
+          </View>
 
           {renderPicker(
             'Estado',
@@ -838,42 +797,52 @@ export default function Crear_EditarCita({ navigation, route }) {
             [
               { label: 'Pendiente', value: 'pendiente' },
               { label: 'Completada', value: 'completada' },
+              { label: 'Confirmada', value: 'confirmada' },
               { label: 'Cancelada', value: 'cancelada' }
             ],
             true
           )}
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="document-text-outline" size={20} color="#2196F3" />
-            <Text style={styles.sectionTitle}>
-              Observaciones
-              {(user?.role === 'admin' || user?.role === 'medico') && (
-                <Text style={styles.optionalText}> (Opcional)</Text>
-              )}
+        {/* Sección de Observaciones - Oculta para pacientes creando nueva cita */}
+        {(user?.role !== 'paciente' || isEditing) && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="document-text-outline" size={20} color="#2196F3" />
+              <Text style={styles.sectionTitle}>
+                Observaciones
+                {(user?.role === 'admin' || user?.role === 'medico') && (
+                  <Text style={styles.optionalText}> (Opcional)</Text>
+                )}
+              </Text>
+            </View>
+
+            {renderInput(
+              'Observaciones', 
+              'observaciones', 
+              user?.role === 'admin' 
+                ? 'Observaciones adicionales (opcional)...' 
+                : user?.role === 'medico' 
+                ? 'Notas medicas o instrucciones (opcional)...'
+                : 'Ingrese observaciones adicionales...', 
+              'default', 
+              true
+            )}
+          </View>
+        )}
+
+        {/* Mensaje informativo para pacientes creando cita */}
+        {user?.role === 'paciente' && !isEditing && (
+          <View style={styles.infoContainer}>
+            <Ionicons name="information-circle" size={20} color="#FF9800" />
+            <Text style={[styles.infoText, { color: '#F57C00' }]}>
+              Las observaciones no están disponibles al crear una cita. Podrás agregarlas después editando la cita.
             </Text>
           </View>
-
-          {renderInput(
-            'Observaciones', 
-            'observaciones', 
-            user?.role === 'admin' 
-              ? 'Observaciones adicionales (opcional)...' 
-              : user?.role === 'medico' 
-              ? 'Notas médicas o instrucciones (opcional)...'
-              : 'Ingrese observaciones adicionales...', 
-            'default', 
-            true
-          )}
-        </View>
+        )}
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => navigation.goBack()}
-            disabled={loading}
-          >
+          <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()} disabled={loading}>
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </TouchableOpacity>
 
@@ -913,9 +882,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   loadingText: {
-    marginTop: 10,
-    fontSize: 16,
+    color: '#2196F3',
+    fontStyle: 'italic',
+    fontSize: 12,
+  },
+  infoTextSmall: {
+    fontSize: 12,
     color: '#666',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  infoContainerSmall: {
+    backgroundColor: '#F0F0F0',
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 4,
   },
   header: {
     backgroundColor: '#FFF',

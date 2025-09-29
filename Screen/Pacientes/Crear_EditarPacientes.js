@@ -311,23 +311,6 @@ export default function Crear_EditarPacientes({ navigation, route }) {
     >
       <StatusBar style="dark" />
 
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>
-            {isEditing ? 'Editar Paciente' : 'Nuevo Paciente'}
-          </Text>
-          <Text style={styles.headerSubtitle}>
-            {isEditing ? 'Modifica los datos del paciente' : 'Completa la informacion del paciente'}
-          </Text>
-        </View>
-      </View>
-
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.formContainer}

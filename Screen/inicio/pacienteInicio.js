@@ -15,12 +15,6 @@ export default function PacienteInicio({ navigation }) {
     loadUserData();
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      loadPacienteData();
-    }
-  }, [user]);
-
   const loadUserData = async () => {
     try {
       const authData = await AuthService.isAuthenticated();
@@ -29,55 +23,6 @@ export default function PacienteInicio({ navigation }) {
       }
     } catch (error) {
       console.error('Error al cargar usuario:', error);
-    }
-  };
-
-  const loadPacienteData = async () => {
-    try {
-      const especialidadesResult = await AuthService.getEspecialidades();
-      if (especialidadesResult.success) {
-      }
-
-      const medicosResult = await AuthService.getMedicos();
-      if (medicosResult.success) {
-      }
-
-      const citasResult = await AuthService.getCitasConMedicos();
-      
-      if (citasResult && citasResult.data && Array.isArray(citasResult.data) && citasResult.data.length > 0 && user) {
-        
-        const citasDelUsuario = citasResult.data;
-        
-        if (citasDelUsuario.length > 0) {
-          const ahora = new Date();
-          
-          const citasProximas = citasDelUsuario.filter(cita => {
-            if (!cita.fechaCita) return false;
-            const fechaCitaCompleta = new Date(`${cita.fechaCita}T${cita.horaCita || '00:00:00'}`);
-            const diferenciaDias = Math.ceil((fechaCitaCompleta - ahora) / (1000 * 60 * 60 * 24));
-            
-            return diferenciaDias >= 0 && diferenciaDias <= 7;
-          });
-
-
-          if (citasProximas.length > 0) {
-            citasProximas.sort((a, b) => {
-              const fechaA = new Date(`${a.fechaCita}T${a.horaCita || '00:00:00'}`);
-              const fechaB = new Date(`${b.fechaCita}T${b.horaCita || '00:00:00'}`);
-              return fechaA - fechaB;
-            });
-            setProximaCita(citasProximas[0]);
-          } else {
-            setProximaCita(null);
-          }
-        } else {
-          setProximaCita(null);
-        }
-      } else {
-        setProximaCita(null);
-      }
-    } catch (error) {
-      setProximaCita(null);
     }
   };
 
@@ -102,7 +47,6 @@ export default function PacienteInicio({ navigation }) {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadPacienteData();
     setRefreshing(false);
   };
 
@@ -149,6 +93,10 @@ export default function PacienteInicio({ navigation }) {
     return '';
   };
 
+  const navigateToPerfil = () => {
+    navigation.getParent()?.navigate('Perfil');
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -169,7 +117,7 @@ export default function PacienteInicio({ navigation }) {
       </View>
 
       <ScrollView
-        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContainer}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -207,8 +155,50 @@ export default function PacienteInicio({ navigation }) {
           </View>
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 80 }} />
       </ScrollView>
+
+      <View style={styles.bottomNav}>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => NavigationService.navigate('PacienteInicio')}
+        >
+          <MaterialCommunityIcons name="home" size={24} color="#8E24AA" />
+          <Text style={[styles.navLabel, styles.navLabelActive]}>Inicio</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => NavigationService.navigate('CitasStack', { screen: 'AgendarCita' })}
+        >
+          <MaterialCommunityIcons name="calendar-blank" size={24} color="#6B7280" />
+          <Text style={styles.navLabel}>Citas</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => NavigationService.navigate('MedicosStack', { screen: 'VerMedicos' })}
+        >
+          <MaterialCommunityIcons name="stethoscope" size={24} color="#6B7280" />
+          <Text style={styles.navLabel}>Médicos</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => NavigationService.navigate('horariosDisponiblesStack', { screen: 'VerHorarios' })}
+        >
+          <MaterialCommunityIcons name="clock-outline" size={24} color="#6B7280" />
+          <Text style={styles.navLabel}>Horarios</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={navigateToPerfil}
+        >
+          <Ionicons name="person-outline" size={24} color="#6B7280" />
+          <Text style={styles.navLabel}>Perfil</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -271,119 +261,6 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
     marginBottom: 16,
   },
-  proximaCitaContainer: {
-    marginBottom: 30,
-  },
-  citaCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  citaHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    justifyContent: 'space-between',
-  },
-  citaTitulo: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginLeft: 8,
-    flex: 1,
-  },
-  diasRestantesContainer: {
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  diasRestantesText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1976D2',
-  },
-  citaContent: {
-    marginBottom: 16,
-  },
-  citaInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  citaText: {
-    fontSize: 14,
-    color: '#4B5563',
-    marginLeft: 8,
-  },
-  citaStatus: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  citaStatusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  noCitaCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 40,
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  noCitaTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  noCitaText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  statsContainer: {
-    marginBottom: 30,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statNumber: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-    textAlign: 'center',
-  },
   actionsContainer: {
     marginBottom: 20,
   },
@@ -417,5 +294,34 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 16,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingTop: 12,
+    paddingBottom: 20,
+    paddingHorizontal: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  navItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  navLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  navLabelActive: {
+    color: '#8E24AA',
+    fontWeight: '600',
   },
 });

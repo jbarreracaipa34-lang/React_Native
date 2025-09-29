@@ -4,12 +4,13 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AuthService from '../../Src/Services/AuthService';
 
-export default function ListarEspecialidades({ navigation }) {
+export default function ListarEspecialidades({ navigation, route }) {
   const [user, setUser] = useState(null);
   const [especialidades, setEspecialidades] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [especialidadExpandida, setEspecialidadExpandida] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadUserData();
@@ -21,6 +22,21 @@ export default function ListarEspecialidades({ navigation }) {
     }
   }, [user]);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      const shouldRefresh = route?.params?.refresh;
+      if (user && shouldRefresh) {
+        navigation.setParams({ refresh: false });
+        
+        setTimeout(() => {
+          loadEspecialidades(user);
+        }, 1000);
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, user, route?.params?.refresh]);
+
   const loadUserData = async () => {
     try {
       const authData = await AuthService.isAuthenticated();
@@ -28,36 +44,84 @@ export default function ListarEspecialidades({ navigation }) {
         setUser(authData.user);
       }
     } catch (error) {
+      console.error('Error loading user data:', error);
+      setError('Error al cargar datos del usuario');
     }
   };
 
-  const loadEspecialidades = async (loggedUser = user) => {
+  const loadEspecialidades = async (loggedUser = user, showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
+      setError(null);
       
       if (loggedUser?.role === 'admin') {
+        await loadEspecialidadesAdmin();
+      } else {
+        await loadEspecialidadesMedico(loggedUser);
+      }
+    } catch (error) {
+      console.error('Error loading especialidades:', error);
+      handleLoadingError(error);
+    } finally {
+      if (showLoading) {
+        setLoading(false);
+      }
+    }
+  };
 
-        const todasEspecialidadesResult = await AuthService.getEspecialidades();
+  const loadEspecialidadesAdmin = async () => {
+    try {
+      
+      const especialidadesResult = await AuthService.getEspecialidadesConMedicos();
+      
+      if (!especialidadesResult?.data) {
+        throw new Error('No se pudieron cargar las especialidades');
+      }
+
+      
+      if (Array.isArray(especialidadesResult.data) && especialidadesResult.data[0]?.medicos) {
+
+        const especialidadesCompletas = especialidadesResult.data.map(especialidad => ({
+          id: especialidad.id,
+          nombre: especialidad.nombre,
+          descripcion: especialidad.descripcion || 'Sin descripcion',
+          medicos: especialidad.medicos || [],
+          totalMedicos: (especialidad.medicos || []).length,
+          totalCitas: 0,
+          citasActivas: 0
+        }));
         
-        if (todasEspecialidadesResult && todasEspecialidadesResult.data) {
-          const todasEspecialidades = todasEspecialidadesResult.data;
-          
-          let especialidadesConMedicos = [];
-          try {
-            const especialidadesConMedicosResult = await AuthService.getEspecialidadesConMedicos();
-            if (especialidadesConMedicosResult && especialidadesConMedicosResult.data) {
-              especialidadesConMedicos = especialidadesConMedicosResult.data;
-            }
-          } catch (error) {
-          }
+        setEspecialidades(especialidadesCompletas);
+        return;
+      }
+      
+      if (Array.isArray(especialidadesResult.data)) {
 
-          const medicosMap = new Map();
-          especialidadesConMedicos.forEach(item => {
-            const especialidadId = item.id;
+        const medicosMap = new Map();
+        const especialidadesMap = new Map();
+        
+        especialidadesResult.data.forEach(item => {
+          const especialidadId = item.id;
+          
+          if (!especialidadesMap.has(especialidadId)) {
+            especialidadesMap.set(especialidadId, {
+              id: especialidadId,
+              nombre: item.nombre,
+              descripcion: item.descripcion || 'Sin descripcion'
+            });
+          }
+          
+          if (item.medico_id || item.medicos) {
             if (!medicosMap.has(especialidadId)) {
               medicosMap.set(especialidadId, []);
             }
-            if (item.medico_id) {
+            
+            if (item.medicos && Array.isArray(item.medicos)) {
+              medicosMap.get(especialidadId).push(...item.medicos);
+            }
+            else if (item.medico_id) {
               medicosMap.get(especialidadId).push({
                 id: item.medico_id,
                 nombre: item.medico_nombre,
@@ -67,89 +131,146 @@ export default function ListarEspecialidades({ navigation }) {
                 email: item.email || 'No disponible'
               });
             }
-          });
+          }
+        });
 
-          const especialidadesCompletas = todasEspecialidades.map(especialidad => ({
+        const especialidadesCompletas = Array.from(especialidadesMap.values()).map(especialidad => ({
+          ...especialidad,
+          medicos: medicosMap.get(especialidad.id) || [],
+          totalMedicos: (medicosMap.get(especialidad.id) || []).length,
+          totalCitas: 0,
+          citasActivas: 0
+        }));
+
+        setEspecialidades(especialidadesCompletas);
+        return;
+      }
+      
+      throw new Error('Formato de respuesta no reconocido');
+      
+    } catch (error) {
+      console.error('Error in loadEspecialidadesAdmin:', error);
+      throw error;
+    }
+  };
+
+  const loadEspecialidadesMedico = async (loggedUser) => {
+    try {
+      
+      const especialidadesResult = await AuthService.getEspecialidadesConMedicos();
+      
+      if (!especialidadesResult?.data) {
+        throw new Error('No se pudieron cargar las especialidades');
+      }
+
+      const especialidadesData = especialidadesResult.data;
+      let especialidadesMap = new Map();
+
+      if (Array.isArray(especialidadesData) && especialidadesData[0]?.medicos) {
+        especialidadesData.forEach(especialidad => {
+          especialidadesMap.set(especialidad.id, {
             id: especialidad.id,
             nombre: especialidad.nombre,
-            descripcion: especialidad.descripcion || 'Sin descripción',
-            medicos: medicosMap.get(especialidad.id) || [],
-            totalMedicos: (medicosMap.get(especialidad.id) || []).length,
-            totalCitas: 0,
-            citasActivas: 0
-          }));
-
-          setEspecialidades(especialidadesCompletas);
-        }
-      } else {
-        const especialidadesResult = await AuthService.getEspecialidadesConMedicos();
-        
-        if (especialidadesResult && especialidadesResult.data && Array.isArray(especialidadesResult.data)) {
-          const especialidadesData = especialidadesResult.data;
-
-          const especialidadesMap = new Map();
-
-          especialidadesData.forEach(item => {
-            const especialidadId = item.id;
-
-            if (!especialidadesMap.has(especialidadId)) {
-              especialidadesMap.set(especialidadId, {
-                id: especialidadId,
-                nombre: item.nombre,
-                descripcion: item.descripcion || 'Sin descripcion',
-                medicos: []
-              });
-            }
-
-            if (item.medico_id) {
-              especialidadesMap.get(especialidadId).medicos.push({
-                id: item.medico_id,
-                nombre: item.medico_nombre,
-                apellido: item.apellido,
-                numeroLicencia: item.numeroLicencia,
-                telefono: item.telefono || 'No disponible',
-                email: item.email || 'No disponible'
-              });
-            }
+            descripcion: especialidad.descripcion || 'Sin descripcion',
+            medicos: especialidad.medicos || []
           });
+        });
+      } 
+      else if (Array.isArray(especialidadesData)) {
+        especialidadesData.forEach(item => {
+          const especialidadId = item.id;
 
-          const especialidadesArray = Array.from(especialidadesMap.values());
-          
-          const especialidadesFiltradas = especialidadesArray.filter(especialidad => {
-            const tieneElMedico = especialidad.medicos.some(medico => {
-              const coincideId = medico.id === loggedUser.id;
-              const coincideMedicoId = medico.id === loggedUser.medicoId;
-              const coincideEmail = medico.email === loggedUser.email;
-              
-              return coincideId || coincideMedicoId || coincideEmail;
+          if (!especialidadesMap.has(especialidadId)) {
+            especialidadesMap.set(especialidadId, {
+              id: especialidadId,
+              nombre: item.nombre,
+              descripcion: item.descripcion || 'Sin descripcion',
+              medicos: []
             });
-            
-            return tieneElMedico;
-          });
+          }
 
-          const especialidadesConStats = especialidadesFiltradas.map(especialidad => ({
-            ...especialidad,
-            totalMedicos: especialidad.medicos.length,
-            totalCitas: 0,
-            citasActivas: 0
-          }));
-
-          setEspecialidades(especialidadesConStats);
-        }
+          if (item.medico_id) {
+            especialidadesMap.get(especialidadId).medicos.push({
+              id: item.medico_id,
+              nombre: item.medico_nombre,
+              apellido: item.apellido,
+              numeroLicencia: item.numeroLicencia,
+              telefono: item.telefono || 'No disponible',
+              email: item.email || 'No disponible'
+            });
+          }
+        });
       }
+
+      const especialidadesArray = Array.from(especialidadesMap.values());
+      
+      const especialidadesFiltradas = especialidadesArray.filter(especialidad => {
+        return especialidad.medicos.some(medico => {
+          const coincideId = medico.id === loggedUser.id;
+          const coincideMedicoId = medico.id === loggedUser.medicoId;
+          const coincideEmail = medico.email === loggedUser.email;
+          
+          return coincideId || coincideMedicoId || coincideEmail;
+        });
+      });
+
+      const especialidadesConStats = especialidadesFiltradas.map(especialidad => ({
+        ...especialidad,
+        totalMedicos: especialidad.medicos.length,
+        totalCitas: 0,
+        citasActivas: 0
+      }));
+
+      setEspecialidades(especialidadesConStats);
+      
     } catch (error) {
-      console.error('Error loading especialidades:', error);
-      setEspecialidades([]);
-      Alert.alert('Error', 'No se pudieron cargar las especialidades: ' + error.message);
-    } finally {
-      setLoading(false);
+      throw error;
     }
+  };
+
+  const handleLoadingError = (error) => {
+    let errorMessage = 'Error al cargar las especialidades';
+    
+    if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
+      errorMessage = 'Error de conexion. Verifica tu conexion a internet.';
+    } else if (error.message?.includes('timeout') || error.message?.includes('Request timeout')) {
+      errorMessage = 'La peticion tardo demasiado. Intenta nuevamente.';
+    } else if (error.response) {
+      const { status } = error.response;
+      switch (status) {
+        case 401:
+          errorMessage = 'Tu sesion ha expirado. Por favor inicia sesion nuevamente.';
+          break;
+        case 403:
+          errorMessage = 'No tienes permisos para ver las especialidades.';
+          break;
+        case 500:
+          errorMessage = 'Error del servidor. Intenta nuevamente.';
+          break;
+        default:
+          errorMessage = `Error del servidor (${status}).`;
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    setError(errorMessage);
+    setEspecialidades([]);
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadEspecialidades();
+    try {
+      await loadEspecialidades(user, false);
+    } catch (error) {
+      console.error('Error on refresh:', error);
+    }
     setRefreshing(false);
+  };
+
+  const handleRetry = async () => {
+    setError(null);
+    await loadEspecialidades(user);
   };
 
   const handleEspecialidadPress = (especialidad) => {
@@ -178,13 +299,6 @@ export default function ListarEspecialidades({ navigation }) {
 
   const handleCrearEspecialidad = () => {
     navigation.navigate('Crear_EditarEspecialidades');
-  };
-
-  const getEstadoColor = (especialidad) => {
-    if (especialidad.totalMedicos > 0) {
-      return { bg: '#E8F5E8', text: '#2E7D32' };
-    }
-    return { bg: '#FFF3E0', text: '#F57C00' };
   };
 
   const contarEstadisticas = () => {
@@ -246,7 +360,6 @@ export default function ListarEspecialidades({ navigation }) {
   const renderEspecialidadItem = (especialidad, index) => {
     const isExpanded = especialidadExpandida === especialidad.id;
     const totalMedicos = especialidad.totalMedicos || 0;
-    const estadoColor = getEstadoColor(especialidad);
 
     return (
       <View key={especialidad.id || index} style={styles.especialidadContainer}>
@@ -264,24 +377,24 @@ export default function ListarEspecialidades({ navigation }) {
                 {especialidad.descripcion}
               </Text>
               <Text style={styles.especialidadStats}>
-                {totalMedicos} médico{totalMedicos !== 1 ? 's' : ''} asociado{totalMedicos !== 1 ? 's' : ''}
+                {totalMedicos} medico{totalMedicos !== 1 ? 's' : ''} asociado{totalMedicos !== 1 ? 's' : ''}
               </Text>
               
               <View style={styles.estadoInfo}>
                 <Ionicons name="medical-outline" size={12} color="#666" />
                 <Text style={styles.estadoInfoText}>
-                  {totalMedicos > 0 ? 'Disponible para citas' : 'Sin médicos disponibles'}
+                  {totalMedicos > 0 ? 'Disponible para citas' : 'Sin medicos disponibles'}
                 </Text>
               </View>
             </View>
 
             <View style={styles.especialidadRight}>
               <View style={styles.medicosPreviewRight}>
-                {especialidad.medicos.slice(0, 2).map((medico, idx) => (
+                {especialidad.medicos && especialidad.medicos.slice(0, 2).map((medico, idx) => (
                   <View key={idx} style={styles.medicoPreviewItem}>
                   </View>
                 ))}
-                {especialidad.medicos.length > 2 && (
+                {especialidad.medicos && especialidad.medicos.length > 2 && (
                   <Text style={styles.masMedicosText}>
                     +{especialidad.medicos.length - 2}
                   </Text>
@@ -290,7 +403,7 @@ export default function ListarEspecialidades({ navigation }) {
               
               <View style={styles.medicosCounter}>
                 <Text style={styles.medicosCounterNumber}>{totalMedicos}</Text>
-                <Text style={styles.medicosCounterLabel}>médicos</Text>
+                <Text style={styles.medicosCounterLabel}>medicos</Text>
               </View>
             </View>
           </View>
@@ -300,6 +413,18 @@ export default function ListarEspecialidades({ navigation }) {
       </View>
     );
   };
+
+  const renderErrorState = () => (
+    <View style={styles.errorContainer}>
+      <MaterialCommunityIcons name="alert-circle" size={64} color="#F44336" />
+      <Text style={styles.errorTitle}>Error al cargar</Text>
+      <Text style={styles.errorText}>{error}</Text>
+      <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+        <Ionicons name="refresh" size={20} color="#FFF" />
+        <Text style={styles.retryButtonText}>Reintentar</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
@@ -335,7 +460,7 @@ export default function ListarEspecialidades({ navigation }) {
               <MaterialCommunityIcons name="medical-bag" size={24} color="#2196F3" />
             </View>
             <View>
-              <Text style={styles.appName}>Citas Médicas</Text>
+              <Text style={styles.appName}>Citas Medicas</Text>
               <Text style={styles.appSubtitle}>Tu salud en tus manos</Text>
             </View>
           </View>
@@ -346,7 +471,7 @@ export default function ListarEspecialidades({ navigation }) {
 
         <View style={styles.titleContainer}>
           <Text style={styles.screenTitle}>
-            {user?.role === 'medico' ? 'Mis Especialidades' : 'Gestión de Especialidades'}
+            {user?.role === 'medico' ? 'Mis Especialidades' : 'Gestion de Especialidades'}
           </Text>
           {user?.role === 'admin' && (
             <TouchableOpacity
@@ -367,19 +492,19 @@ export default function ListarEspecialidades({ navigation }) {
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>{estadisticas.totalMedicos}</Text>
-          <Text style={styles.statLabel}>Médicos</Text>
+          <Text style={styles.statLabel}>Medicos</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={[styles.statNumber, { color: '#4CAF50' }]}>
             {estadisticas.conMedicos}
           </Text>
-          <Text style={styles.statLabel}>Con Médicos</Text>
+          <Text style={styles.statLabel}>Con Medicos</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={[styles.statNumber, { color: '#FF9800' }]}>
             {estadisticas.sinMedicos}
           </Text>
-          <Text style={styles.statLabel}>Sin Médicos</Text>
+          <Text style={styles.statLabel}>Sin Medicos</Text>
         </View>
       </View>
 
@@ -388,16 +513,18 @@ export default function ListarEspecialidades({ navigation }) {
         contentContainerStyle={styles.especialidadesContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {especialidades.length > 0 ? (
+        {error ? (
+          renderErrorState()
+        ) : especialidades.length > 0 ? (
           <>
             <View style={styles.listHeader}>
               <Text style={styles.listTitle}>
-                {user?.role === 'medico' ? 'Especialidades Asignadas' : 'Especialidades por Médico'}
+                {user?.role === 'medico' ? 'Especialidades Asignadas' : 'Especialidades por Medico'}
               </Text>
               <Text style={styles.listSubtitle}>
                 {user?.role === 'medico' 
                   ? 'Especialidades en las que puedes atender'
-                  : 'Gestiona las especialidades médicas del sistema'
+                  : 'Gestiona las especialidades medicas del sistema'
                 }
               </Text>
             </View>
@@ -426,6 +553,40 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#666',
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+    maxWidth: 300,
+    paddingHorizontal: 20,
+  },
+  retryButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  retryButtonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   header: {
     backgroundColor: '#FFF',
@@ -630,63 +791,6 @@ const styles = StyleSheet.create({
     borderLeftColor: '#2196F3',
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
-  },
-  especialidadInfo: {
-    marginBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 12,
-  },
-  especialidadInfoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
-  },
-  infoItem: {
-    marginBottom: 8,
-  },
-  infoHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  estadoBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    minWidth: 80,
-    alignItems: 'center',
-  },
-  estadoText: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  medicosCount: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '600',
-  },
-  medicosPreview: {
-    marginTop: 8,
-  },
-  medicoItem: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
-  },
-  masMedicos: {
-    fontSize: 11,
-    color: '#999',
-    fontStyle: 'italic',
-    marginTop: 2,
   },
   accionesEspecialidad: {
     flexDirection: 'row',

@@ -1,8 +1,9 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AdminInicio from "../../Screen/inicio/adminInicio";
+import Perfil from "../../Screen/inicio/perfil";
 import CitasStack from "./Stack/CitasStack";
 import PacientesStack from "./Stack/PacientesStack";
 import MedicosStack from "./Stack/MedicosStack";
@@ -96,6 +97,18 @@ export default function NavegacionPrincipal() {
             <MaterialCommunityIcons name="clock-outline" size={size} color={color} />
           ),
           tabBarLabel: "Horarios",
+        }}
+      />
+
+      <Tab.Screen
+        name="Perfil"
+        component={Perfil}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
+          tabBarLabel: "Perfil",
         }}
       />
     </Tab.Navigator>

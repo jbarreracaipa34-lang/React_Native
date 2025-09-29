@@ -155,9 +155,7 @@ class AuthService {
   async editarPaciente(id, data) { return api.put(`/editarPacientes/${id}`, data); }
   async eliminarPaciente(id) { return api.delete(`/eliminarPacientes/${id}`); }
    async registrarPacienteConUserId(data) { 
-    try {
-      const response = await api.post('registrarPacienteConUserId', data);
-      console.log('Paciente registrado exitosamente:', response.data);
+    try {const response = await api.post('registrarPacienteConUserId', data);
       return response;
     } catch (error) {
       console.error('Error al registrar paciente:', error.response?.data || error.message);
