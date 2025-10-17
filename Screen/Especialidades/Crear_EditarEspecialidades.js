@@ -7,7 +7,7 @@ import AuthService from '../../Src/Services/AuthService';
 export default function Crear_EditarEspecialidad({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
@@ -41,9 +41,9 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
         
-        if (authData.user.role !== 'admin') {
+        if (authData.usuario.role !== 'admin') {
           Alert.alert(
             'Sin permisos',
             'Solo los administradores pueden gestionar especialidades',
@@ -120,7 +120,7 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
       return;
     }
 
-    if (!user || user.role !== 'admin') {
+    if (!usuario || usuario.role !== 'admin') {
       Alert.alert('Error', 'No tienes permisos para realizar esta accion');
       return;
     }
@@ -330,7 +330,7 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
           <TouchableOpacity
             style={[styles.saveButton, loading && styles.saveButtonDisabled]}
             onPress={handleSubmit}
-            disabled={loading || !user || user.role !== 'admin'}
+            disabled={loading || !usuario || usuario.role !== 'admin'}
           >
             {loading ? (
               <ActivityIndicator color="#FFF" size="small" />

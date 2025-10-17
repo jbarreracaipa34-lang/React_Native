@@ -7,11 +7,18 @@ import AuthService from '../../Src/Services/AuthService';
 
 export default function Registrar({ navigation }) {
   const [formData, setFormData] = useState({
-    name: '',
+    nombre: '',
+    apellido: '',
+    tipoDocumento: 'CC',
+    numeroDocumento: '',
+    fechaNacimiento: '',
+    genero: 'M',
+    telefono: '',
     email: '',
+    direccion: '',
+    eps: '',
     password: '',
-    password_confirmation: '',
-    role: 'paciente'
+    password_confirmation: ''
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +32,9 @@ export default function Registrar({ navigation }) {
   };
 
   const validateForm = () => {
-    if (!formData.name || !formData.email || !formData.password || !formData.password_confirmation) {
+    if (!formData.nombre || !formData.apellido || !formData.numeroDocumento || 
+        !formData.fechaNacimiento || !formData.telefono || !formData.email || 
+        !formData.direccion || !formData.eps || !formData.password || !formData.password_confirmation) {
       Alert.alert('Error', 'Por favor complete todos los campos');
       return false;
     }
@@ -35,8 +44,8 @@ export default function Registrar({ navigation }) {
       return false;
     }
 
-    if (formData.password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+    if (formData.password.length < 8) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres');
       return false;
     }
 
@@ -49,32 +58,18 @@ export default function Registrar({ navigation }) {
     setLoading(true);
 
     try {
-      const result = await AuthService.register(formData);
+      const result = await AuthService.registerPaciente(formData);
 
       if (result.success) {
-        Alert.alert('Registro exitoso', 'Tu cuenta ha sido creada correctamente',
+        Alert.alert('Registro exitoso', 'Tu cuenta de paciente ha sido creada correctamente',
           [
             {
               text: 'OK',
               onPress: () => {
-                const userRole = result.data.user.role;
-                
-                switch (userRole) {
-                  case 'medico':
-                    navigation.reset({
-                      index: 0,
-                      routes: [{ name: 'MedicoInicio' }]
-                    });
-                    break;
-                  case 'paciente':
-                    navigation.reset({
-                      index: 0,
-                      routes: [{ name: 'PacienteInicio' }]
-                    });
-                    break;
-                  default:
-                    navigation.navigate('IniciarSesion');
-                }
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'PacienteInicio' }]
+                });
               }
             }
           ]
@@ -108,8 +103,8 @@ export default function Registrar({ navigation }) {
           <Text style={styles.logoText}>🏥</Text>
         </View>
 
-        <Text style={styles.title}>Crear Cuenta</Text>
-        <Text style={styles.subtitle}>Completa la informacion para registrarte</Text>
+        <Text style={styles.title}>Registro de Paciente</Text>
+        <Text style={styles.subtitle}>Completa la informacion para registrarte como paciente</Text>
 
         <View style={styles.formContainer}>
           
@@ -117,10 +112,82 @@ export default function Registrar({ navigation }) {
             <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Nombre completo"
-              value={formData.name}
-              onChangeText={(value) => handleInputChange('name', value)}
+              placeholder="Nombre"
+              value={formData.nombre}
+              onChangeText={(value) => handleInputChange('nombre', value)}
               autoCapitalize="words"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Apellido"
+              value={formData.apellido}
+              onChangeText={(value) => handleInputChange('apellido', value)}
+              autoCapitalize="words"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="card-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.tipoDocumento}
+                style={styles.picker}
+                onValueChange={(value) => handleInputChange('tipoDocumento', value)}
+              >
+                <Picker.Item label="Cédula de Ciudadanía" value="CC" />
+                <Picker.Item label="Tarjeta de Identidad" value="TI" />
+                <Picker.Item label="Cédula de Extranjería" value="CE" />
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="card-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Número de documento"
+              value={formData.numeroDocumento}
+              onChangeText={(value) => handleInputChange('numeroDocumento', value)}
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="calendar-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Fecha de nacimiento (YYYY-MM-DD)"
+              value={formData.fechaNacimiento}
+              onChangeText={(value) => handleInputChange('fechaNacimiento', value)}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="people-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.genero}
+                style={styles.picker}
+                onValueChange={(value) => handleInputChange('genero', value)}
+              >
+                <Picker.Item label="Masculino" value="M" />
+                <Picker.Item label="Femenino" value="F" />
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="call-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Teléfono"
+              value={formData.telefono}
+              onChangeText={(value) => handleInputChange('telefono', value)}
+              keyboardType="phone-pad"
             />
           </View>
 
@@ -138,17 +205,25 @@ export default function Registrar({ navigation }) {
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="people-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={formData.role}
-                style={styles.picker}
-                onValueChange={(value) => handleInputChange('role', value)}
-              >
-                <Picker.Item label="Paciente" value="paciente" />
-                <Picker.Item label="Medico" value="medico" />
-              </Picker>
-            </View>
+            <Ionicons name="location-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Dirección"
+              value={formData.direccion}
+              onChangeText={(value) => handleInputChange('direccion', value)}
+              autoCapitalize="words"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="medical-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="EPS"
+              value={formData.eps}
+              onChangeText={(value) => handleInputChange('eps', value)}
+              autoCapitalize="words"
+            />
           </View>  
 
           <View style={styles.inputContainer}>

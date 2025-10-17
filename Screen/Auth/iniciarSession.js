@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 import AuthService from '../../Src/Services/AuthService';
 
 export default function IniciarSession({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [tipoUsuario, setTipoUsuario] = useState('paciente');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -19,10 +21,10 @@ export default function IniciarSession({ navigation }) {
     setLoading(true);
 
     try {
-      const result = await AuthService.login({ email, password });
+      const result = await AuthService.login({ email, password, user_type: tipoUsuario });
 
       if (result.success) {
-        const userRole = result.data.user.role;
+        const userRole = result.data.role;
         
         switch (userRole) {
           case 'admin':
@@ -78,6 +80,21 @@ export default function IniciarSession({ navigation }) {
         <Text style={styles.subtitle}>Ingresa tus credenciales para acceder</Text>
 
         <View style={styles.formContainer}>
+          <View style={styles.inputContainer}>
+            <Ionicons name="people-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={tipoUsuario}
+                style={styles.picker}
+                onValueChange={setTipoUsuario}
+              >
+                <Picker.Item label="Paciente" value="paciente" />
+                <Picker.Item label="Médico" value="medico" />
+                <Picker.Item label="Administrador" value="admin" />
+              </Picker>
+            </View>
+          </View>
+
           <View style={styles.inputContainer}>
             <Ionicons name="mail-outline" size={20} color="#6B7280" style={styles.inputIcon} />
             <TextInput
@@ -224,6 +241,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1A1A1A',
     paddingVertical: 16,
+  },
+  pickerContainer: {
+    flex: 1,
+  },
+  picker: {
+    flex: 1,
+    height: 50,
   },
   eyeIcon: {
     padding: 4,

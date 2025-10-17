@@ -4,6 +4,7 @@ import NavegacionPrincipal from "./NavegacionPrincipal";
 import AuthNavegation from "./AuthNavegation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState } from "react-native";
+import { navigationRef } from "../Services/NavegationService";
 
 export default function AppNavegacion() {
   const [isCargando, setEstaCargando] = useState(true);
@@ -12,7 +13,7 @@ export default function AppNavegacion() {
 
   const loadToken = async () => {
     try {
-      const token = await AsyncStorage.getItem("userToken");
+      const token = await AsyncStorage.getItem("authToken");
       setUserToken(token);
     } catch (error) {
       console.error("Error al cargar el token:", error);
@@ -58,7 +59,7 @@ export default function AppNavegacion() {
   }, []);
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       {userToken ? <NavegacionPrincipal /> : <AuthNavegation />}
     </NavigationContainer>
   );

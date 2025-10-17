@@ -6,7 +6,7 @@ import AuthService from '../../Src/Services/AuthService';
 
 export default function DetalleHorariosDisponibles({ route, navigation }) {
   const { medico } = route.params || {};
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [loading, setLoading] = useState(false);
 
   if (!medico) {
@@ -32,7 +32,7 @@ export default function DetalleHorariosDisponibles({ route, navigation }) {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
       }
     } catch (error) {
       console.error('Error al cargar usuario:', error);
@@ -304,7 +304,7 @@ export default function DetalleHorariosDisponibles({ route, navigation }) {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {user?.role === 'paciente' && (
+      {usuario?.role === 'paciente' && (
         <View style={styles.actionButtonsContainer}>
           <TouchableOpacity
             style={styles.agendarButton}

@@ -6,21 +6,21 @@ import AuthService from '../../Src/Services/AuthService';
 
 export default function DetalleCitas({ route, navigation }) {
   const { cita } = route.params;
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [citaDetallada, setCitaDetallada] = useState(cita);
   const [paciente, setPaciente] = useState(null);
   const [medico, setMedico] = useState(null);
 
   useEffect(() => {
-    loadUserData();
+    loadUsuarioData();
     cargarDetallesCompletos();
   }, []);
 
-  const loadUserData = async () => {
+  const loadUsuarioData = async () => {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
       }
     } catch (error) {
       console.error('Error al cargar usuario:', error);
@@ -28,9 +28,7 @@ export default function DetalleCitas({ route, navigation }) {
   };
 
   const cargarDetallesCompletos = async () => {
-    try {
-      setLoading(true);
-      
+    try {      
       if (cita.pacientes_id || cita.paciente_id) {
         const pacientesResponse = await AuthService.getPacientes();
         if (pacientesResponse?.data) {

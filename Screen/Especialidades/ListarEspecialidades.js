@@ -1,59 +1,55 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AuthService from '../../Src/Services/AuthService';
 
 export default function ListarEspecialidades({ navigation, route }) {
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [especialidades, setEspecialidades] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [especialidadExpandida, setEspecialidadExpandida] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    loadUserData();
+    loadUsuarioData();
   }, []);
 
   useEffect(() => {
-    if (user) {
-      loadEspecialidades(user);
+    if (usuario) {
+      loadEspecialidades(usuario);
     }
-  }, [user]);
+  }, [usuario]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       const shouldRefresh = route?.params?.refresh;
-      if (user && shouldRefresh) {
+      if (usuario && shouldRefresh) {
         navigation.setParams({ refresh: false });
         
         setTimeout(() => {
-          loadEspecialidades(user);
+          loadEspecialidades(usuario);
         }, 1000);
       }
     });
 
     return unsubscribe;
-  }, [navigation, user, route?.params?.refresh]);
+  }, [navigation, usuario, route?.params?.refresh]);
 
-  const loadUserData = async () => {
+  const loadUsuarioData = async () => {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
       }
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('Error loading usuario data:', error);
       setError('Error al cargar datos del usuario');
     }
   };
 
-  const loadEspecialidades = async (loggedUser = user, showLoading = true) => {
+  const loadEspecialidades = async (loggedUser = usuario, showLoading = true) => {
     try {
-      if (showLoading) {
-        setLoading(true);
-      }
       setError(null);
       
       if (loggedUser?.role === 'admin') {
@@ -64,10 +60,6 @@ export default function ListarEspecialidades({ navigation, route }) {
     } catch (error) {
       console.error('Error loading especialidades:', error);
       handleLoadingError(error);
-    } finally {
-      if (showLoading) {
-        setLoading(false);
-      }
     }
   };
 
@@ -81,7 +73,7 @@ export default function ListarEspecialidades({ navigation, route }) {
       }
 
       
-      if (Array.isArray(especialidadesResult.data) && especialidadesResult.data[0]?.medicos) {
+      if (especialidadesResult.success && especialidadesResult.data && Array.isArray(especialidadesResult.data) && especialidadesResult.data[0]?.medicos) {
 
         const especialidadesCompletas = especialidadesResult.data.map(especialidad => ({
           id: especialidad.id,
@@ -156,75 +148,32 @@ export default function ListarEspecialidades({ navigation, route }) {
 
   const loadEspecialidadesMedico = async (loggedUser) => {
     try {
-      
-      const especialidadesResult = await AuthService.getEspecialidadesConMedicos();
+      const especialidadesResult = await AuthService.getEspecialidadDelMedico();
       
       if (!especialidadesResult?.data) {
         throw new Error('No se pudieron cargar las especialidades');
       }
 
       const especialidadesData = especialidadesResult.data;
-      let especialidadesMap = new Map();
+      
+      if (especialidadesResult.success && Array.isArray(especialidadesData) && especialidadesData.length > 0) {
+        const especialidadesConStats = especialidadesData.map(especialidad => ({
+          id: especialidad.id,
+          nombre: especialidad.nombre,
+          descripcion: especialidad.descripcion || 'Sin descripcion',
+          totalMedicos: 1, // Solo este médico
+          totalCitas: 0,
+          citasActivas: 0
+        }));
 
-      if (Array.isArray(especialidadesData) && especialidadesData[0]?.medicos) {
-        especialidadesData.forEach(especialidad => {
-          especialidadesMap.set(especialidad.id, {
-            id: especialidad.id,
-            nombre: especialidad.nombre,
-            descripcion: especialidad.descripcion || 'Sin descripcion',
-            medicos: especialidad.medicos || []
-          });
-        });
-      } 
-      else if (Array.isArray(especialidadesData)) {
-        especialidadesData.forEach(item => {
-          const especialidadId = item.id;
-
-          if (!especialidadesMap.has(especialidadId)) {
-            especialidadesMap.set(especialidadId, {
-              id: especialidadId,
-              nombre: item.nombre,
-              descripcion: item.descripcion || 'Sin descripcion',
-              medicos: []
-            });
-          }
-
-          if (item.medico_id) {
-            especialidadesMap.get(especialidadId).medicos.push({
-              id: item.medico_id,
-              nombre: item.medico_nombre,
-              apellido: item.apellido,
-              numeroLicencia: item.numeroLicencia,
-              telefono: item.telefono || 'No disponible',
-              email: item.email || 'No disponible'
-            });
-          }
-        });
+        setEspecialidades(especialidadesConStats);
+      } else {
+        setEspecialidades([]);
       }
-
-      const especialidadesArray = Array.from(especialidadesMap.values());
-      
-      const especialidadesFiltradas = especialidadesArray.filter(especialidad => {
-        return especialidad.medicos.some(medico => {
-          const coincideId = medico.id === loggedUser.id;
-          const coincideMedicoId = medico.id === loggedUser.medicoId;
-          const coincideEmail = medico.email === loggedUser.email;
-          
-          return coincideId || coincideMedicoId || coincideEmail;
-        });
-      });
-
-      const especialidadesConStats = especialidadesFiltradas.map(especialidad => ({
-        ...especialidad,
-        totalMedicos: especialidad.medicos.length,
-        totalCitas: 0,
-        citasActivas: 0
-      }));
-
-      setEspecialidades(especialidadesConStats);
-      
     } catch (error) {
-      throw error;
+      console.error('Error in loadEspecialidadesMedico:', error);
+      setError('Error al cargar especialidades del médico');
+      setEspecialidades([]);
     }
   };
 
@@ -261,7 +210,7 @@ export default function ListarEspecialidades({ navigation, route }) {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await loadEspecialidades(user, false);
+      await loadEspecialidades(usuario, false);
     } catch (error) {
       console.error('Error on refresh:', error);
     }
@@ -270,7 +219,7 @@ export default function ListarEspecialidades({ navigation, route }) {
 
   const handleRetry = async () => {
     setError(null);
-    await loadEspecialidades(user);
+    await loadEspecialidades(usuario);
   };
 
   const handleEspecialidadPress = (especialidad) => {
@@ -286,7 +235,7 @@ export default function ListarEspecialidades({ navigation, route }) {
   };
 
   const handleEliminarEspecialidad = (especialidad) => {
-    if (user?.role !== 'admin') {
+    if (usuario?.role !== 'admin') {
       Alert.alert('Acceso denegado', 'Solo los administradores pueden eliminar especialidades');
       return;
     }
@@ -335,7 +284,7 @@ export default function ListarEspecialidades({ navigation, route }) {
             <Ionicons name="eye-outline" size={18} color="#1E88E5" />
           </TouchableOpacity>
 
-          {user?.role === 'admin' && (
+          {usuario?.role === 'admin' && (
             <TouchableOpacity
               style={[styles.botonAccion, { borderColor: '#4CAF50' }]}
               onPress={() => handleEditarEspecialidad(especialidad)}
@@ -344,7 +293,7 @@ export default function ListarEspecialidades({ navigation, route }) {
             </TouchableOpacity>
           )}
 
-          {user?.role === 'admin' && (
+          {usuario?.role === 'admin' && (
             <TouchableOpacity
               style={[styles.botonAccion, { borderColor: '#F44336' }]}
               onPress={() => handleEliminarEspecialidad(especialidad)}
@@ -431,12 +380,12 @@ export default function ListarEspecialidades({ navigation, route }) {
       <MaterialCommunityIcons name="medical-bag" size={64} color="#CCC" />
       <Text style={styles.emptyTitle}>No hay especialidades</Text>
       <Text style={styles.emptyText}>
-        {user?.role === 'medico' 
+        {usuario?.role === 'medico' 
           ? 'No tienes especialidades asignadas'
           : 'No hay especialidades registradas en el sistema'
         }
       </Text>
-      {user?.role === 'admin' && (
+      {usuario?.role === 'admin' && (
         <TouchableOpacity
           style={styles.emptyButton}
           onPress={() => handleCrearEspecialidad()}
@@ -471,9 +420,9 @@ export default function ListarEspecialidades({ navigation, route }) {
 
         <View style={styles.titleContainer}>
           <Text style={styles.screenTitle}>
-            {user?.role === 'medico' ? 'Mis Especialidades' : 'Gestion de Especialidades'}
+            {usuario?.role === 'medico' ? 'Mis Especialidades' : 'Gestion de Especialidades'}
           </Text>
-          {user?.role === 'admin' && (
+          {usuario?.role === 'admin' && (
             <TouchableOpacity
               style={styles.newButton}
               onPress={() => handleCrearEspecialidad()}
@@ -519,10 +468,10 @@ export default function ListarEspecialidades({ navigation, route }) {
           <>
             <View style={styles.listHeader}>
               <Text style={styles.listTitle}>
-                {user?.role === 'medico' ? 'Especialidades Asignadas' : 'Especialidades por Medico'}
+                {usuario?.role === 'medico' ? 'Especialidades Asignadas' : 'Especialidades por Medico'}
               </Text>
               <Text style={styles.listSubtitle}>
-                {user?.role === 'medico' 
+                {usuario?.role === 'medico' 
                   ? 'Especialidades en las que puedes atender'
                   : 'Gestiona las especialidades medicas del sistema'
                 }

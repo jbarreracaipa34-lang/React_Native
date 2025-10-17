@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AuthService from '../../Src/Services/AuthService';
 
 export default function ListarHorariosDisponibles({ navigation }) {
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [horarios, setHorarios] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [horarioExpandido, setHorarioExpandido] = useState(null);
 
   useEffect(() => {
@@ -16,16 +15,16 @@ export default function ListarHorariosDisponibles({ navigation }) {
   }, []);
 
   useEffect(() => {
-    if (user) {
+    if (usuario) {
       loadHorarios();
     }
-  }, [user]);
+  }, [usuario]);
 
   const loadUserData = async () => {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
       }
     } catch (error) {
       console.error('Error al cargar usuario:', error);
@@ -34,28 +33,10 @@ export default function ListarHorariosDisponibles({ navigation }) {
 
   const loadHorarios = async () => {
     try {
-      setLoading(true);
-      
       const horariosResult = await AuthService.getHorariosDisponiblesPorMedico();
       
-      if (horariosResult && horariosResult.data && Array.isArray(horariosResult.data)) {
+      if (horariosResult && horariosResult.success && horariosResult.data && Array.isArray(horariosResult.data)) {
         let horariosData = horariosResult.data;
-
-        if (user?.role === 'medico') {
-          const emailUsuario = user.email;
-          horariosData = horariosData.filter(item => {
-            return item.email && emailUsuario && 
-                   item.email.toLowerCase().trim() === emailUsuario.toLowerCase().trim();
-          });
-
-          if (horariosData.length === 0 && user.name) {
-            const nombreUsuario = user.name;
-            horariosData = horariosResult.data.filter(item => {
-              return item.nombre && 
-                     item.nombre.toLowerCase().trim() === nombreUsuario.toLowerCase().trim();
-            });
-          }
-        }
 
         const medicosMap = new Map();
 
@@ -130,8 +111,6 @@ export default function ListarHorariosDisponibles({ navigation }) {
       console.error('Error loading horarios:', error);
       setHorarios([]);
       Alert.alert('Error', 'No se pudieron cargar los horarios disponibles: ' + error.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -262,9 +241,9 @@ export default function ListarHorariosDisponibles({ navigation }) {
 
         <View style={[
           styles.accionesMedico,
-          user?.role === 'paciente' ? styles.accionesMedicoPaciente : styles.accionesMedicoOtros
+          usuario?.role === 'paciente' ? styles.accionesMedicoPaciente : styles.accionesMedicoOtros
         ]}>
-          {user?.role === 'paciente' && (
+          {usuario?.role === 'paciente' && (
             <TouchableOpacity
               style={[
                 styles.botonAccion, 
@@ -278,7 +257,7 @@ export default function ListarHorariosDisponibles({ navigation }) {
             </TouchableOpacity>
           )}
 
-          {(user?.role === 'medico' || user?.role === 'admin') && (
+          {(usuario?.role === 'medico' || usuario?.role === 'admin') && (
             <>
               <TouchableOpacity
                 style={[styles.botonAccion, styles.botonAccionOtros, { borderColor: '#1E88E5' }]}
@@ -381,14 +360,14 @@ export default function ListarHorariosDisponibles({ navigation }) {
       <MaterialCommunityIcons name="clock-outline" size={64} color="#CCC" />
       <Text style={styles.emptyTitle}>No hay horarios disponibles</Text>
       <Text style={styles.emptyText}>
-        {user?.role === 'paciente' 
+        {usuario?.role === 'paciente' 
           ? 'No hay medicos con horarios de atencion disponibles'
-          : user?.role === 'medico'
+          : usuario?.role === 'medico'
           ? 'No tienes horarios registrados'
           : 'No hay horarios registrados en el sistema'
         }
       </Text>
-      {(user?.role === 'medico' || user?.role === 'admin') && (
+      {(usuario?.role === 'medico' || usuario?.role === 'admin') && (
         <TouchableOpacity
           style={styles.emptyButton}
           onPress={() => handleCrearHorarios()}
@@ -424,10 +403,10 @@ export default function ListarHorariosDisponibles({ navigation }) {
 
         <View style={styles.titleContainer}>
           <Text style={styles.screenTitle}>
-            {user?.role === 'paciente' ? 'Horarios Disponibles' : 
-             user?.role === 'medico' ? 'Mis Horarios' : 'Gestion de Horarios'}
+            {usuario?.role === 'paciente' ? 'Horarios Disponibles' : 
+             usuario?.role === 'medico' ? 'Mis Horarios' : 'Gestion de Horarios'}
           </Text>
-          {(user?.role === 'medico' || user?.role === 'admin') && (
+          {(usuario?.role === 'medico' || usuario?.role === 'admin') && (
             <TouchableOpacity
               style={styles.newButton}
               onPress={() => handleCrearHorarios()}
@@ -443,7 +422,7 @@ export default function ListarHorariosDisponibles({ navigation }) {
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>{horarios.length}</Text>
           <Text style={styles.statLabel}>
-            {user?.role === 'medico' ? 'Mi Perfil' : 'Medicos'}
+            {usuario?.role === 'medico' ? 'Mi Perfil' : 'Medicos'}
           </Text>
         </View>
         <View style={styles.statItem}>
@@ -473,13 +452,13 @@ export default function ListarHorariosDisponibles({ navigation }) {
           <>
             <View style={styles.listHeader}>
               <Text style={styles.listTitle}>
-                {user?.role === 'paciente' ? 'Medicos Disponibles' : 
-                 user?.role === 'medico' ? 'Mis Horarios de Atencion' : 'Horarios por Medico'}
+                {usuario?.role === 'paciente' ? 'Medicos Disponibles' : 
+                 usuario?.role === 'medico' ? 'Mis Horarios de Atencion' : 'Horarios por Medico'}
               </Text>
               <Text style={styles.listSubtitle}>
-                {user?.role === 'paciente' 
+                {usuario?.role === 'paciente' 
                   ? 'Selecciona un medico para agendar tu cita'
-                  : user?.role === 'medico'
+                  : usuario?.role === 'medico'
                   ? 'Revisa y gestiona tus horarios disponibles'
                   : 'Gestiona los horarios de atencion medica'
                 }

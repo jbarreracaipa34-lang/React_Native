@@ -11,6 +11,19 @@ import EspecialidadesStack from "./Stack/EspecialidadesStack";
 import horariosDisponiblesStack from "./Stack/horariosDisponiblesStack";
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
+
+function AdminMainStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen 
+        name="AdminInicio" 
+        component={AdminInicio} 
+        options={{ headerShown: false }}
+      />
+    </Stack.Navigator>
+  );
+}
 
 export default function NavegacionPrincipal() {
   return (
@@ -28,17 +41,17 @@ export default function NavegacionPrincipal() {
         tabBarInactiveTintColor: "#504a4aff",
       }}
     >
-      <Tab.Screen
-        name="Inicio"
-        component={AdminInicio}
-        options={{
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
-          tabBarLabel: "Inicio",
-        }}
-      />
+        <Tab.Screen
+          name="Inicio"
+          component={AdminMainStack}
+          options={{
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="home" size={size} color={color} />
+            ),
+            tabBarLabel: "Inicio",
+          }}
+        />
 
       <Tab.Screen
         name="CitasStack"

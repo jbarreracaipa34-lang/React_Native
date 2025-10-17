@@ -10,7 +10,7 @@ export default function EliminarHorariosDisponibles({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [selectedHorarios, setSelectedHorarios] = useState([]);
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
 
   useEffect(() => {
     loadUserData();
@@ -21,7 +21,7 @@ export default function EliminarHorariosDisponibles({ route, navigation }) {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
       }
     } catch (error) {
       console.error('Error al cargar usuario:', error);
@@ -101,7 +101,7 @@ export default function EliminarHorariosDisponibles({ route, navigation }) {
       return;
     }
 
-    if (user?.role !== 'admin' && user?.role !== 'medico') {
+    if (usuario?.role !== 'admin' && usuario?.role !== 'medico') {
       Alert.alert('Error', 'No tienes permisos para eliminar horarios');
       return;
     }

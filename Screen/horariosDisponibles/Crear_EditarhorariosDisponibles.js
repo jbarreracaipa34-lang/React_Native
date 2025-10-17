@@ -8,7 +8,7 @@ import AuthService from '../../Src/Services/AuthService';
 export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [medicos, setMedicos] = useState([]);
   const [medicoActual, setMedicoActual] = useState(null);
   const [showDayPicker, setShowDayPicker] = useState(false);
@@ -61,9 +61,9 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
         
-        if (authData.user.role === 'paciente') {
+        if (authData.usuario.role === 'paciente') {
           Alert.alert(
             'Sin permisos',
             'Solo medicos y administradores pueden gestionar horarios',
@@ -72,8 +72,8 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
           return;
         }
 
-        if (authData.user.role === 'medico') {
-          await loadMedicoActual(authData.user.id, authData.user);
+        if (authData.usuario.role === 'medico') {
+          await loadMedicoActual(authData.usuario.id, authData.usuario);
         }
       } else {
         Alert.alert(
@@ -87,7 +87,7 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
     }
   };
 
-  const loadMedicoActual = async (userId, userData) => {
+  const loadMedicoActual = async (usuarioId, usuarioData) => {
     try {
       
       const medicosResult = await AuthService.getMedicos();
@@ -109,19 +109,19 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
 
       const medicoEncontrado = medicosData.find(medico => {
         
-        if (medico.email && userData?.email) {
-          const emailCoincide = medico.email.toLowerCase().trim() === userData.email.toLowerCase().trim();
+        if (medico.email && usuarioData?.email) {
+          const emailCoincide = medico.email.toLowerCase().trim() === usuarioData.email.toLowerCase().trim();
           if (emailCoincide) {
             return true;
           }
         }
         
-        if (medico.user_id && String(medico.user_id) === String(userId)) {
+        if (medico.usuario_id && String(medico.usuario_id) === String(usuarioId)) {
           return true;
         }
         
-        const nombreUsuario = userData?.name || '';
-        const apellidoUsuario = userData?.apellido || '';
+        const nombreUsuario = usuarioData?.name || '';
+        const apellidoUsuario = usuarioData?.apellido || '';
         
         if (nombreUsuario && medico.nombre) {
           const nombreCoincide = medico.nombre.toLowerCase().trim() === nombreUsuario.toLowerCase().trim();
@@ -419,10 +419,10 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
   );
 
   const renderMedicoSelector = () => {
-    if (user?.role === 'medico' && medicoActual) {
+    if (usuario?.role === 'medico' && medicoActual) {
     }
 
-    if (user?.role === 'medico' && !medicoActual) {
+    if (usuario?.role === 'medico' && !medicoActual) {
       return (
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>
@@ -461,7 +461,7 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
       );
     }
 
-    if (user?.role === 'admin') {
+    if (usuario?.role === 'admin') {
       return (
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>
@@ -512,9 +512,9 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
         <View style={styles.infoContainer}>
           <Ionicons name="information-circle" size={20} color="#2196F3" />
           <Text style={styles.infoText}>
-            {user?.role === 'medico' && medicoActual && 'Tu perfil de medico se ha seleccionado automaticamente. '}
-            {user?.role === 'medico' && !medicoActual && 'Selecciona tu perfil de medico de la lista. '}
-            {user?.role === 'admin' && 'Como administrador, puedes crear horarios para cualquier medico. '}
+            {usuario?.role === 'medico' && medicoActual && 'Tu perfil de medico se ha seleccionado automaticamente. '}
+            {usuario?.role === 'medico' && !medicoActual && 'Selecciona tu perfil de medico de la lista. '}
+            {usuario?.role === 'admin' && 'Como administrador, puedes crear horarios para cualquier medico. '}
             Configura los horarios de atencion medica. Puedes agregar multiples horarios por dia.
           </Text>
         </View>
@@ -781,19 +781,19 @@ const styles = StyleSheet.create({
     color: '#F44336',
     marginTop: 4,
   },
-  userInfoContainer: {
+  usuarioInfoContainer: {
     backgroundColor: '#F8F9FA',
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
-  userInfo: {
+  usuarioInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
   },
-  userInfoText: {
+  usuarioInfoText: {
     marginLeft: 8,
     fontSize: 14,
     color: '#333',

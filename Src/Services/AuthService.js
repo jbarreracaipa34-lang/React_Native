@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { Alert } from 'react-native';
+import NavigationService from './NavegationService';
 
-const API_BASE_URL = 'http://192.168.1.11:8000/api';
+const API_BASE_URL = 'http://192.168.1.6:8000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -9,13 +11,12 @@ const api = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  timeout: 10000,
+  timeout: 15000,
 });
 
 api.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem('userToken');
-    console.log('Usando token:', token);
+    const token = await AsyncStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -27,93 +28,134 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const safeEndpoints = ['/logout', '/me'];
-    const isSafe = safeEndpoints.some((url) => error.config?.url?.includes(url));
-    if (error.response?.status === 401 && !isSafe) {
-      await AsyncStorage.removeItem('userToken');
-      await AsyncStorage.removeItem('userData');
+    
+    if (error.response?.status === 401) {
+      const safeEndpoints = ['/logout', '/me'];
+      const isSafe = safeEndpoints.some((url) => error.config?.url?.includes(url));
+      
+      if (!isSafe) {
+        
+        const currentToken = await AsyncStorage.getItem('authToken');
+        if (currentToken) {
+          console.log('Limpiando storage debido a token inválido');
+          await AsyncStorage.removeItem('authToken');
+          await AsyncStorage.removeItem('authData');
+          
+          Alert.alert(
+            'Sesión Expirada',
+            'Tu sesión ha expirado. Por favor inicia sesión nuevamente.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  NavigationService.navigate('IniciarSession');
+                }
+              }
+            ]
+          );
+        }
+      }
     }
+    
     return Promise.reject(error);
   }
 );
 
 class AuthService {
-  async register(userData) {
+  async registerPaciente(pacienteData) {
     try {
-      const response = await api.post('/registrar', userData);
-      if (response.data.access_token) {
-        await AsyncStorage.setItem('userToken', response.data.access_token);
-        await AsyncStorage.setItem('userData', JSON.stringify(response.data.user));
-        console.log('Token guardado:', response.data.access_token);
+      const response = await api.post('/registrar', pacienteData);
+      
+      if (response.data.token) {
+        await AsyncStorage.setItem('authToken', response.data.token);
+        await AsyncStorage.setItem('authData', JSON.stringify(response.data.paciente));
+        console.log('Token guardado:', response.data.token);
       }
+      
       return { success: true, data: response.data };
     } catch (error) {
+      
       return {
         success: false,
-        message: error.response?.data?.message || 'Error al registrar usuario',
+        message: error.response?.data?.message || 'Error al registrar paciente',
         errors: error.response?.data?.errors || null
       };
     }
   }
 
-  async login(credentials) {
-  try {
-    const response = await api.post('/login', credentials);
-    const token = response.data?.token;
-    const user = response.data?.user;
+  async registerMedico(medicoData) { return api.post('/registrar-medico', medicoData); }
 
-    if (token && user) {
-      await AsyncStorage.setItem('userToken', token);
-      await AsyncStorage.setItem('userData', JSON.stringify(user));
-      return { success: true, data: response.data };
-    } else {
-      return { success: false, message: 'Token o usuario faltante en la respuesta' };
+  async login(credentials) {
+    try {
+      
+      const loginApi = axios.create({
+        baseURL: API_BASE_URL,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        timeout: 30000,
+      });
+      
+      const response = await loginApi.post('/login', credentials);
+      
+      const token = response.data?.token;
+      const usuario = response.data?.user;
+      const role = response.data?.role;
+
+
+      if (token && usuario) {
+        await AsyncStorage.setItem('authToken', token);
+        await AsyncStorage.setItem('authData', JSON.stringify({...usuario, role}));
+        return { success: true, data: response.data };
+      } else {
+        return { success: false, message: 'Token o usuario faltante en la respuesta' };
+      }
+    } catch (error) {
+      
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Error al iniciar sesion',
+        errors: error.response?.data?.errors || null
+      };
     }
-  } catch (error) {
-    console.log('Error en login:', error.response?.data || error.message);
-    return {
-      success: false,
-      message: error.response?.data?.message || 'Error al iniciar sesion',
-      errors: error.response?.data?.errors || null
-    };
   }
-}
 
   async logout() {
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      if (token) { await api.post('/logout');
+      const token = await AsyncStorage.getItem('authToken');
+      if (token) {
+        await api.post('/logout');
       }
     } catch (error) {
-      console.log('Error al hacer logout:', error.message);
     } finally {
-      await AsyncStorage.multiRemove(['userToken', 'userData']);
+      await AsyncStorage.multiRemove(['authToken', 'authData']);
     }
   }
 
   async isAuthenticated() {
-    const token = await AsyncStorage.getItem('userToken');
-    const userData = await AsyncStorage.getItem('userData');
-    if (token && userData) {
-      return { isAuthenticated: true, user: JSON.parse(userData), token };
+    const token = await AsyncStorage.getItem('authToken');
+    const authData = await AsyncStorage.getItem('authData');
+    if (token && authData) {
+      return { isAuthenticated: true, usuario: JSON.parse(authData), token };
     }
     return { isAuthenticated: false };
   }
 
   async getToken() {
-    const token = await AsyncStorage.getItem('userToken');
+    const token = await AsyncStorage.getItem('authToken');
     console.log('Token obtenido:', token);
     return token;
   }
 
-  async getCurrentUser() {
-    const userData = await AsyncStorage.getItem('userData');
-    return userData ? JSON.parse(userData) : null;
+  async getCurrentUsuario() {
+    const authData = await AsyncStorage.getItem('authData');
+    return authData ? JSON.parse(authData) : null;
   }
 
-  async updateUserData(userData) {
+  async updateUsuarioData(usuarioData) {
     try {
-      await AsyncStorage.setItem('userData', JSON.stringify(userData));
+      await AsyncStorage.setItem('authData', JSON.stringify(usuarioData));
       return true;
     } catch {
       return false;
@@ -125,7 +167,9 @@ class AuthService {
       const response = await api.get('/me');
       return { success: true, data: response.data };
     } catch (error) {
-      if (error.response?.status === 401) await this.logout();
+      if (error.response?.status === 401) {
+        await this.logout();
+      }
       return { success: false, message: 'Token invalido' };
     }
   }
@@ -135,44 +179,139 @@ class AuthService {
   async getCitaPorId(id) { return api.get(`/citas/${id}`); }
   async editarCita(id, data) { return api.put(`/editarCitas/${id}`, data); }
   async eliminarCita(id) { return api.delete(`/eliminarCitas/${id}`); }
-  async getEspecialidades() { return api.get('/especialidades'); }
-  async getEspecialidadPorId(id) { return api.get(`/especialidades/${id}`); }
+  async getEspecialidades() {
+    try {
+      const response = await api.get('/especialidades');
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error loading especialidades:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al cargar especialidades',
+        data: []
+      };
+    }
+  }
+  async getEspecialidadDelMedico() {
+    try {
+      const response = await api.get('/me');
+      if (response.data && response.data.user && response.data.user.especialidad) {
+        return { success: true, data: [response.data.user.especialidad] };
+      }
+      return { success: false, data: [], message: 'No se encontró especialidad del médico' };
+    } catch (error) {
+      console.error('Error loading especialidad del medico:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al cargar especialidad del médico',
+        data: []
+      };
+    }
+  }
   async crearEspecialidad(data) { return api.post('/crearEspecialidades', data); }
   async editarEspecialidad(id, data) { return api.put(`/editarEspecialidades/${id}`, data); }
   async eliminarEspecialidad(id) { return api.delete(`/eliminarEspecialidades/${id}`); }
-  async getHorarios() { return api.get('/horarios'); }
+  async getHorarios() {
+    try {
+      const response = await api.get('/horarios');
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error loading horarios:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al cargar horarios',
+        data: []
+      };
+    }
+  }
   async crearHorario(data) { return api.post('/crearHorarios', data); }
   async editarHorario(id, data) { return api.put(`/editarHorarios/${id}`, data); }
   async eliminarHorario(id) { return api.delete(`/eliminarHorarios/${id}`); }
-  async getMedicos() { return api.get('/medicos'); }
+  async getMedicos() {
+    try {
+      const response = await api.get('/medicos');
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error loading medicos:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al cargar médicos',
+        data: []
+      };
+    }
+  }
   async getMedicoPorId(id) { return api.get(`/medicos/${id}`); }
   async crearMedico(data) { return api.post('/crearMedico', data); }
   async editarMedico(id, data) { return api.put(`/editarMedico/${id}`, data); }
   async eliminarMedico(id) { return api.delete(`/eliminarMedico/${id}`); }
-  async getPacientes() { return api.get('/pacientes'); }
+  async getPacientes() {
+    try {
+      const response = await api.get('/pacientes');
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al cargar pacientes',
+        data: []
+      };
+    }
+  }
   async getPacientePorId(id) { return api.get(`/pacientes/${id}`); }
   async crearPaciente(data) { return api.post('/crearPacientes', data); }
   async editarPaciente(id, data) { return api.put(`/editarPacientes/${id}`, data); }
   async eliminarPaciente(id) { return api.delete(`/eliminarPacientes/${id}`); }
-   async registrarPacienteConUserId(data) { 
-    try {const response = await api.post('registrarPacienteConUserId', data);
-      return response;
-    } catch (error) {
-      console.error('Error al registrar paciente:', error.response?.data || error.message);
-      throw error;
-    }
-  }
 
 async getCitasConMedicos() { return api.get('/citasConMedicos'); }
 async getCitasPendientes() { return api.get('/citasPendientes'); }
 async getCitasCompletadas() { return api.get('/citasCompletadas'); }
 async getCitasPorFecha(fecha) { return api.get(`/citasPorFecha/${fecha}`); }
-async getHorariosDisponiblesPorMedico() { return api.get('/horariosDisponiblesPorMedico'); }
-async getMedicosConEspecialidades() { return api.get('/medicosConEspecialidad'); }
+  async getHorariosDisponiblesPorMedico() {
+    try {
+      const response = await api.get('/horariosDisponiblesPorMedico');
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error loading horarios disponibles por medico:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al cargar horarios disponibles',
+        data: []
+      };
+    }
+  }
+async getMedicosConEspecialidades() {
+  try {
+    const response = await api.get('/medicosConEspecialidad');
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('Error loading medicos con especialidades:', error);
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Error al cargar médicos con especialidades',
+      data: []
+    };
+  }
+}
 async getMedicosConHorarios() { return api.get('/medicosConHorarios'); }
 async getPacientesConCitas() { return api.get('/pacientesConCitas'); }
 async getPacientesPorEPS(eps) { return api.get(`/pacientesPorEPS/${eps}`); }
-async getEspecialidadesConMedicos() {return api.get('/EspecialidadesConMedicos'); }
+async getEspecialidadesConMedicos() { return api.get('/EspecialidadesConMedicos'); }
+  async registerAdmin(adminData) { return api.post('/crearAdmin', adminData); }
+  async getAdmins() {
+    try {
+      const response = await api.get('/admin');
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error loading admins:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al cargar administradores',
+        data: []
+      };
+    }
+  }
+  async getAdmin(id) { return api.get(`/admin/${id}`); }
+  async updateAdmin(id, adminData) { return api.put(`/editarAdmin/${id}`, adminData); }
+  async eliminarAdmin(id) { return api.delete(`/eliminarAdmin/${id}`); }
 }
 
 export default new AuthService();

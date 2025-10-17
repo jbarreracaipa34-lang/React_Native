@@ -1,49 +1,46 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AuthService from '../../Src/Services/AuthService';
 
 export default function ListarPacientes({ navigation }) {
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [pacientes, setPacientes] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [pacienteExpandido, setPacienteExpandido] = useState(null);
 
   useEffect(() => {
-    loadUserData();
+    loadUsuarioData();
   }, []);
 
   useEffect(() => {
-    if (user) {
-      loadPacientes(user);
+    if (usuario) {
+      loadPacientes(usuario);
     }
-  }, [user]);
+  }, [usuario]);
 
-  const loadUserData = async () => {
+  const loadUsuarioData = async () => {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
       }
     } catch (error) {
       console.error('Error al cargar usuario:', error);
     }
   };
 
-  const loadPacientes = async (loggedUser = user) => {
+  const loadPacientes = async (loggedUser = usuario) => {
     try {
-      setLoading(true);
-      
       if (loggedUser?.role === 'admin') {
         const todosPacientesResult = await AuthService.getPacientes();
         
-        if (todosPacientesResult && todosPacientesResult.data && Array.isArray(todosPacientesResult.data)) {
+        if (todosPacientesResult.success && todosPacientesResult.data && Array.isArray(todosPacientesResult.data)) {
           const pacientesConCitas = await AuthService.getPacientesConCitas();
           const citasPorPaciente = new Map();
           
-          if (pacientesConCitas && pacientesConCitas.data && Array.isArray(pacientesConCitas.data)) {
+          if (pacientesConCitas.success && pacientesConCitas.data && Array.isArray(pacientesConCitas.data)) {
             pacientesConCitas.data.forEach(item => {
               const pacienteId = item.id;
               if (!citasPorPaciente.has(pacienteId)) {
@@ -69,6 +66,7 @@ export default function ListarPacientes({ navigation }) {
             email: paciente.email || 'No disponible',
             fechaNacimiento: paciente.fechaNacimiento || 'No disponible',
             genero: paciente.genero || 'No disponible',
+            direccion: paciente.direccion || 'No disponible',
             eps: paciente.eps || 'No disponible',
             citas: citasPorPaciente.get(paciente.id) || []
           }));
@@ -91,7 +89,11 @@ export default function ListarPacientes({ navigation }) {
         const pacientesResult = await AuthService.getPacientesConCitas();
         
         if (pacientesResult && pacientesResult.data && Array.isArray(pacientesResult.data)) {
-          const citasFiltradas = pacientesResult.data;
+          // Filtrar solo los pacientes que tienen citas con este médico
+          const citasFiltradas = pacientesResult.data.filter(item => 
+            item.medicos_id === loggedUser.id
+          );
+          
           const pacientesMap = new Map();
 
           citasFiltradas.forEach(item => {
@@ -140,8 +142,6 @@ export default function ListarPacientes({ navigation }) {
       console.error('Error loading pacientes:', error);
       setPacientes([]);
       Alert.alert('Error', 'No se pudieron cargar los pacientes: ' + error.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -164,7 +164,7 @@ export default function ListarPacientes({ navigation }) {
   };
 
   const handleEliminarPaciente = (paciente) => {
-    if (user?.role !== 'admin') {
+    if (usuario?.role !== 'admin') {
       Alert.alert('Acceso denegado', 'Solo los administradores pueden eliminar pacientes');
       return;
     }
@@ -318,7 +318,7 @@ export default function ListarPacientes({ navigation }) {
             <Ionicons name="eye-outline" size={18} color="#1E88E5" />
           </TouchableOpacity>
 
-          {(user?.role === 'admin' || user?.role === 'medico') && (
+          {(usuario?.role === 'admin' || usuario?.role === 'medico') && (
             <TouchableOpacity
               style={[styles.botonAccion, { borderColor: '#4CAF50' }]}
               onPress={() => handleEditarPaciente(paciente)}
@@ -327,7 +327,7 @@ export default function ListarPacientes({ navigation }) {
             </TouchableOpacity>
           )}
 
-          {user?.role === 'admin' && (
+          {usuario?.role === 'admin' && (
             <TouchableOpacity
               style={[styles.botonAccion, { borderColor: '#F44336' }]}
               onPress={() => handleEliminarPaciente(paciente)}
@@ -425,12 +425,12 @@ export default function ListarPacientes({ navigation }) {
       <MaterialCommunityIcons name="account-group" size={64} color="#CCC" />
       <Text style={styles.emptyTitle}>No hay pacientes</Text>
       <Text style={styles.emptyText}>
-        {user?.role === 'medico' 
+        {usuario?.role === 'medico' 
           ? 'No tienes pacientes con citas programadas'
           : 'No hay pacientes registrados en el sistema'
         }
       </Text>
-      {(user?.role === 'admin' || user?.role === 'medico') && (
+      {(usuario?.role === 'admin') && (
         <TouchableOpacity
           style={styles.emptyButton}
           onPress={() => navigation.navigate('Crear_EditarPacientes')}
@@ -456,8 +456,8 @@ export default function ListarPacientes({ navigation }) {
             <View>
               <Text style={styles.appName}>Citas Medicas</Text>
               <Text style={styles.appSubtitle}>
-                {user?.role === 'admin' ? 'Panel de administracion' : 
-                 user?.role === 'medico' ? 'Portal medico' : 'Tu salud en tus manos'}
+                {usuario?.role === 'admin' ? 'Panel de administracion' : 
+                 usuario?.role === 'medico' ? 'Portal medico' : 'Tu salud en tus manos'}
               </Text>
             </View>
           </View>
@@ -468,9 +468,9 @@ export default function ListarPacientes({ navigation }) {
 
         <View style={styles.titleContainer}>
           <Text style={styles.screenTitle}>
-            {user?.role === 'medico' ? 'Mis Pacientes' : 'Pacientes'}
+            {usuario?.role === 'medico' ? 'Mis Pacientes' : 'Pacientes'}
           </Text>
-          {(user?.role === 'admin' || user?.role === 'medico') && (
+          {(usuario?.role === 'admin') && (
             <TouchableOpacity
               style={styles.newButton}
               onPress={() => navigation.navigate('Crear_EditarPacientes')}
@@ -516,7 +516,7 @@ export default function ListarPacientes({ navigation }) {
           <>
             <View style={styles.listHeader}>
               <Text style={styles.listTitle}>
-                {user?.role === 'medico' ? 'Mis Pacientes' : 'Lista de Pacientes'}
+                {usuario?.role === 'medico' ? 'Mis Pacientes' : 'Lista de Pacientes'}
               </Text>
             </View>
             {pacientes.map((paciente, index) => renderPacienteItem(paciente, index))}

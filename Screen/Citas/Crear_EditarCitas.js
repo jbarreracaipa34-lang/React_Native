@@ -8,7 +8,7 @@ import AuthService from '../../Src/Services/AuthService';
 export default function Crear_EditarCita({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [pacientes, setPacientes] = useState([]);
   const [medicos, setMedicos] = useState([]);
   const [pacienteInfo, setPacienteInfo] = useState(null);
@@ -34,13 +34,13 @@ export default function Crear_EditarCita({ navigation, route }) {
   }, []);
 
   useEffect(() => {
-    if (user && !isEditing) {
+    if (usuario && !isEditing) {
       preseleccionarDatosPorRol();
-      if (user.role === 'paciente') {
+      if (usuario.role === 'paciente') {
         obtenerInfoPaciente();
       }
     }
-  }, [user, pacientes, medicos, isEditing]);
+  }, [usuario, pacientes, medicos, isEditing]);
 
   useEffect(() => {
     if (formData.medicos_id && formData.medicos_id !== ultimaConsultaHorarios.medicoId) {
@@ -82,10 +82,10 @@ export default function Crear_EditarCita({ navigation, route }) {
   const obtenerInfoPaciente = async () => {
     try {
       const pacienteEncontrado = pacientes.find(paciente => {
-        const nombreCoincide = paciente.nombre && (user.nombre || user.name) && 
-          paciente.nombre.toLowerCase().trim() === (user.nombre || user.name).toLowerCase().trim();
-        const userIdCoincide = paciente.user_id && String(paciente.user_id) === String(user.id);
-        return nombreCoincide || userIdCoincide;
+        const nombreCoincide = paciente.nombre && (usuario.nombre || usuario.name) && 
+          paciente.nombre.toLowerCase().trim() === (usuario.nombre || usuario.name).toLowerCase().trim();
+        const usuarioIdCoincide = paciente.usuario_id && String(paciente.usuario_id) === String(usuario.id);
+        return nombreCoincide || usuarioIdCoincide;
       });
       
       if (pacienteEncontrado) {
@@ -205,7 +205,7 @@ export default function Crear_EditarCita({ navigation, route }) {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
       }
     } catch (error) {
       Alert.alert('Error', 'No se pudo cargar la informacion del usuario');
@@ -214,12 +214,12 @@ export default function Crear_EditarCita({ navigation, route }) {
 
   const loadPacientes = async () => {
     try {
-      if (user?.role === 'paciente') {
+      if (usuario?.role === 'paciente') {
         setPacientes([{
-          id: user.id,
-          nombre: user.nombre || user.name,
-          apellido: user.apellido || '',
-          numeroDocumento: user.documento || user.numeroDocumento || 'N/A'
+          id: usuario.id,
+          nombre: usuario.nombre || usuario.name,
+          apellido: usuario.apellido || '',
+          numeroDocumento: usuario.documento || usuario.numeroDocumento || 'N/A'
         }]);
         return;
       }
@@ -228,12 +228,12 @@ export default function Crear_EditarCita({ navigation, route }) {
       const data = response?.data || response || [];
       setPacientes(data);
     } catch (error) {
-      if (user?.role === 'paciente' && error.response?.status === 403) {
+      if (usuario?.role === 'paciente' && error.response?.status === 403) {
         setPacientes([{
-          id: user.id,
-          nombre: user.nombre || user.name,
-          apellido: user.apellido || '',
-          numeroDocumento: user.documento || user.numeroDocumento || 'N/A'
+          id: usuario.id,
+          nombre: usuario.nombre || usuario.name,
+          apellido: usuario.apellido || '',
+          numeroDocumento: usuario.documento || usuario.numeroDocumento || 'N/A'
         }]);
         return;
       }
@@ -252,12 +252,12 @@ export default function Crear_EditarCita({ navigation, route }) {
 
   const loadMedicos = async () => {
     try {
-      if (user?.role === 'medico') {
+      if (usuario?.role === 'medico') {
         setMedicos([{
-          id: user.id,
-          nombre: user.nombre || user.name,
-          apellido: user.apellido || '',
-          especialidad: user.especialidad || 'Sin especialidad'
+          id: usuario.id,
+          nombre: usuario.nombre || usuario.name,
+          apellido: usuario.apellido || '',
+          especialidad: usuario.especialidad || 'Sin especialidad'
         }]);
         return;
       }
@@ -280,12 +280,12 @@ export default function Crear_EditarCita({ navigation, route }) {
 
       setMedicos(medicosConEspecialidad);
     } catch (error) {
-      if (user?.role === 'medico' && error.response?.status === 403) {
+      if (usuario?.role === 'medico' && error.response?.status === 403) {
         setMedicos([{
-          id: user.id,
-          nombre: user.nombre || user.name,
-          apellido: user.apellido || '',
-          especialidad: user.especialidad || 'Sin especialidad'
+          id: usuario.id,
+          nombre: usuario.nombre || usuario.name,
+          apellido: usuario.apellido || '',
+          especialidad: usuario.especialidad || 'Sin especialidad'
         }]);
         return;
       }
@@ -319,17 +319,17 @@ export default function Crear_EditarCita({ navigation, route }) {
   };
 
   const preseleccionarDatosPorRol = () => {
-    if (!user) return;
+    if (!usuario) return;
     
     setFormData(prev => {
       const newFormData = { ...prev };
       
-      if (user.role === 'paciente') {
-        newFormData.pacientes_id = String(pacienteInfo?.id || user.id);
+      if (usuario.role === 'paciente') {
+        newFormData.pacientes_id = String(pacienteInfo?.id || usuario.id);
       }
       
-      if (user.role === 'medico') {
-        newFormData.medicos_id = String(user.id);
+      if (usuario.role === 'medico') {
+        newFormData.medicos_id = String(usuario.id);
       }
       
       return newFormData;
@@ -337,11 +337,11 @@ export default function Crear_EditarCita({ navigation, route }) {
   };
 
   const handleInputChange = (field, value) => {
-    if (isEditing && user?.role === 'medico' && field !== 'observaciones' && field !== 'estado') {
+    if (isEditing && usuario?.role === 'medico' && field !== 'observaciones' && field !== 'estado') {
       return;
     }
 
-    if (isEditing && user?.role === 'paciente') {
+    if (isEditing && usuario?.role === 'paciente') {
       const pacientePuedeEditar = verificarSiPacientePuedeEditar();
       
       if (!pacientePuedeEditar && field !== 'observaciones') {
@@ -400,17 +400,17 @@ export default function Crear_EditarCita({ navigation, route }) {
   };
 
   const verificarSiPacientePuedeEditar = () => {
-    if (!citaAEditar || !user || user.role !== 'paciente') return false;
+    if (!citaAEditar || !usuario || usuario.role !== 'paciente') return false;
     
-    const userIdActual = String(user.id);
-    const citaUserId = String(citaAEditar.user_id || '');
+    const usuarioIdActual = String(usuario.id);
+    const citaUserId = String(citaAEditar.usuario_id || '');
     const citaPacientesId = String(citaAEditar.pacientes_id || '');
     
-    const puedeEditarPorUserId = citaUserId === userIdActual;
-    const puedeEditarPorPacienteId = citaPacientesId === userIdActual;
+    const puedeEditarPorUserId = citaUserId === usuarioIdActual;
+    const puedeEditarPorPacienteId = citaPacientesId === usuarioIdActual;
     const puedeEditarPorPacienteInfo = pacienteInfo && String(citaAEditar.pacientes_id) === String(pacienteInfo.id);
-    const puedeEditarPorDatos = citaAEditar.paciente_nombre && (user.nombre || user.name) &&
-      citaAEditar.paciente_nombre.toLowerCase().trim() === (user.nombre || user.name || '').toLowerCase().trim();
+    const puedeEditarPorDatos = citaAEditar.paciente_nombre && (usuario.nombre || usuario.name) &&
+      citaAEditar.paciente_nombre.toLowerCase().trim() === (usuario.nombre || usuario.name || '').toLowerCase().trim();
     
     return puedeEditarPorUserId || puedeEditarPorPacienteId || puedeEditarPorPacienteInfo || puedeEditarPorDatos;
   };
@@ -418,7 +418,7 @@ export default function Crear_EditarCita({ navigation, route }) {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!isEditing && user?.role !== 'admin' && !formData.pacientes_id) {
+    if (!isEditing && usuario?.role !== 'admin' && !formData.pacientes_id) {
       newErrors.pacientes_id = 'El paciente es obligatorio';
     }
     
@@ -462,17 +462,12 @@ export default function Crear_EditarCita({ navigation, route }) {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm() || !user) {
-      Alert.alert('Error', !user ? 'Sesion no valida' : 'Corrige los errores en el formulario');
+    if (!validateForm() || !usuario) {
+      Alert.alert('Error', !usuario ? 'Sesion no valida' : 'Corrige los errores en el formulario');
       return;
     }
 
     try {
-      const tokenVerification = await AuthService.verifyToken();
-      if (!tokenVerification.success) {
-        Alert.alert('Error', 'Tu sesion ha expirado. Por favor inicia sesion nuevamente.');
-        return;
-      }
     } catch (error) {
       Alert.alert('Error', 'Problema de autenticacion. Por favor inicia sesion nuevamente.');
       return;
@@ -492,17 +487,17 @@ export default function Crear_EditarCita({ navigation, route }) {
       if (isEditing) {
         const baseData = {};
 
-        if (user.role === 'medico') {
+        if (usuario.role === 'medico') {
           baseData.estado = formData.estado.trim();
           baseData.observaciones = observacionesProcessed;
-        } else if (user.role === 'paciente') {
+        } else if (usuario.role === 'paciente') {
           const pacientePuedeEditar = verificarSiPacientePuedeEditar();
           if (pacientePuedeEditar) {
             Object.assign(baseData, citaData);
           } else {
             baseData.observaciones = observacionesProcessed;
           }
-        } else if (user.role === 'admin') {
+        } else if (usuario.role === 'admin') {
           Object.assign(baseData, citaData);
           if (formData.medicos_id) baseData.medicos_id = parseInt(formData.medicos_id);
           if (formData.pacientes_id) baseData.pacientes_id = parseInt(formData.pacientes_id);
@@ -510,10 +505,10 @@ export default function Crear_EditarCita({ navigation, route }) {
 
         Object.assign(citaData, baseData);
       } else {
-        citaData.user_id = user.id;
+        citaData.usuario_id = usuario.id;
         citaData.medicos_id = parseInt(formData.medicos_id);
         
-        if (user.role === 'paciente') {
+        if (usuario.role === 'paciente') {
           citaData.pacientes_id = pacienteInfo?.id ? parseInt(pacienteInfo.id) : null;
         } else {
           citaData.pacientes_id = parseInt(formData.pacientes_id) || null;
@@ -573,10 +568,11 @@ export default function Crear_EditarCita({ navigation, route }) {
   };
 
   const isFieldDisabled = (field) => {
-    if (!isEditing && user?.role === 'paciente' && field === 'pacientes_id') return true;
-    if (!isEditing && user?.role === 'medico' && field === 'medicos_id') return true;
-    if (isEditing && user?.role === 'medico') return field !== 'observaciones' && field !== 'estado';
-    if (isEditing && user?.role === 'paciente') {
+    if (!isEditing && usuario?.role === 'paciente' && field === 'pacientes_id') return true;
+    if (!isEditing && usuario?.role === 'paciente' && field === 'estado') return true; // Estado solo lectura para pacientes al crear
+    if (!isEditing && usuario?.role === 'medico' && field === 'medicos_id') return true;
+    if (isEditing && usuario?.role === 'medico') return field !== 'observaciones' && field !== 'estado';
+    if (isEditing && usuario?.role === 'paciente') {
       const pacientePuedeEditar = verificarSiPacientePuedeEditar();
       return !pacientePuedeEditar ? field !== 'observaciones' : field === 'medicos_id' || field === 'estado';
     }
@@ -584,8 +580,8 @@ export default function Crear_EditarCita({ navigation, route }) {
   };
 
   const shouldShowField = (field) => {
-    if (user?.role === 'paciente' && field === 'pacientes_id') return false;
-    if (user?.role === 'medico' && field === 'medicos_id') return false;
+    if (usuario?.role === 'paciente' && field === 'pacientes_id') return false;
+    if (usuario?.role === 'medico' && field === 'medicos_id') return false;
     return true;
   };
 
@@ -750,11 +746,11 @@ export default function Crear_EditarCita({ navigation, route }) {
         <View style={styles.infoContainer}>
           <Ionicons name="information-circle" size={20} color="#2196F3" />
           <Text style={styles.infoText}>
-            {user?.role === 'medico' && 'Como medico, esta cita sera asignada automaticamente a ti.'}
-            {user?.role === 'paciente' && !isEditing && 'Como paciente, esta cita sera creada automaticamente para ti.'}
-            {user?.role === 'paciente' && isEditing && 'Como paciente, no puedes cambiar el medico ni el estado de la cita.'}
-            {user?.role === 'admin' && 'Como administrador, puedes asignar cualquier medico y paciente (opcional). Las observaciones son opcionales.'}
-            {isEditing && user?.role === 'medico' && ' Solo puedes editar las observaciones y el estado de la cita.'}
+            {usuario?.role === 'medico' && 'Como medico, esta cita sera asignada automaticamente a ti.'}
+            {usuario?.role === 'paciente' && !isEditing && 'Como paciente, esta cita sera creada automaticamente para ti. El estado se establecera como "Pendiente" hasta que el medico la confirme.'}
+            {usuario?.role === 'paciente' && isEditing && 'Como paciente, no puedes cambiar el medico ni el estado de la cita.'}
+            {usuario?.role === 'admin' && 'Como administrador, puedes asignar cualquier medico y paciente (opcional). Las observaciones son opcionales.'}
+            {isEditing && usuario?.role === 'medico' && ' Solo puedes editar las observaciones y el estado de la cita.'}
           </Text>
         </View>
 
@@ -771,7 +767,7 @@ export default function Crear_EditarCita({ navigation, route }) {
               label: `${paciente.nombre} ${paciente.apellido} (${paciente.numeroDocumento || paciente.documento})`,
               value: String(paciente.id)
             })),
-            user?.role !== 'admin'
+            usuario?.role !== 'admin'
           )}
 
           {shouldShowField('medicos_id') && renderMedicoPicker()}
@@ -804,13 +800,13 @@ export default function Crear_EditarCita({ navigation, route }) {
           )}
         </View>
 
-        {(user?.role !== 'paciente' || isEditing) && (
+        {(usuario?.role !== 'paciente' || isEditing) && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="document-text-outline" size={20} color="#2196F3" />
               <Text style={styles.sectionTitle}>
                 Observaciones
-                {(user?.role === 'admin' || user?.role === 'medico') && (
+                {(usuario?.role === 'admin' || usuario?.role === 'medico') && (
                   <Text style={styles.optionalText}> (Opcional)</Text>
                 )}
               </Text>
@@ -819,9 +815,9 @@ export default function Crear_EditarCita({ navigation, route }) {
             {renderInput(
               'Observaciones', 
               'observaciones', 
-              user?.role === 'admin' 
+              usuario?.role === 'admin' 
                 ? 'Observaciones adicionales (opcional)...' 
-                : user?.role === 'medico' 
+                : usuario?.role === 'medico' 
                 ? 'Notas medicas o instrucciones (opcional)...'
                 : 'Ingrese observaciones adicionales...', 
               'default', 
@@ -830,7 +826,7 @@ export default function Crear_EditarCita({ navigation, route }) {
           </View>
         )}
 
-        {user?.role === 'paciente' && !isEditing && (
+        {usuario?.role === 'paciente' && !isEditing && (
           <View style={styles.infoContainer}>
             <Ionicons name="information-circle" size={20} color="#FF9800" />
             <Text style={[styles.infoText, { color: '#F57C00' }]}>
@@ -847,7 +843,7 @@ export default function Crear_EditarCita({ navigation, route }) {
           <TouchableOpacity
             style={[styles.saveButton, loading && styles.saveButtonDisabled]}
             onPress={handleSubmit}
-            disabled={loading || !user}
+            disabled={loading || !usuario}
           >
             {loading ? (
               <ActivityIndicator color="#FFF" size="small" />

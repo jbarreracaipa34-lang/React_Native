@@ -6,7 +6,7 @@ import AuthService from '../../Src/Services/AuthService';
 
 export default function DetallePacientes({ route, navigation }) {
   const { paciente } = route.params;
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [pacienteDetallado, setPacienteDetallado] = useState(paciente);
   const [loading, setLoading] = useState(false);
 
@@ -19,7 +19,7 @@ export default function DetallePacientes({ route, navigation }) {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
       }
     } catch (error) {
       console.error('Error al cargar usuario:', error);

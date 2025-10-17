@@ -6,27 +6,27 @@ import AuthService from '../../Src/Services/AuthService';
 import NavigationService from '../../Src/Services/NavegationService';
 
 export default function Perfil({ navigation }) {
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState(null);
+  const [rolUsuario, setRolUsuario] = useState(null);
   const [medicoData, setMedicoData] = useState(null);
 
   useEffect(() => {
-    loadUserData();
+    loadUsuarioData();
   }, []);
 
-  const loadUserData = async () => {
+  const loadUsuarioData = async () => {
     try {
       const authData = await AuthService.isAuthenticated();
       
       if (authData.isAuthenticated) {
-        setUser(authData.user);
-        const role = authData.user.role || authData.user.tipo_usuario;
-        setUserRole(role);
+        setUsuario(authData.usuario);
+        const role = authData.usuario.role || authData.usuario.tipo_usuario;
+        setRolUsuario(role);
         
 
         if (role?.toLowerCase() === 'medico' || role?.toLowerCase() === 'doctor') {
-          await loadMedicoData(authData.user.id);
+          await loadMedicoData(authData.usuario.id);
         } else {
         }
       }
@@ -37,7 +37,7 @@ export default function Perfil({ navigation }) {
     }
   };
 
-  const loadMedicoData = async (userId) => {
+  const loadMedicoData = async (usuarioId) => {
     try {
       
       const medicosResult = await AuthService.getMedicosConEspecialidades();
@@ -45,7 +45,7 @@ export default function Perfil({ navigation }) {
       if (medicosResult && medicosResult.data && Array.isArray(medicosResult.data)) {
         
         const currentMedico = medicosResult.data.find(
-          medico => medico.email?.toLowerCase() === user?.email?.toLowerCase()
+          medico => medico.email?.toLowerCase() === usuario?.email?.toLowerCase()
         );
         
         if (currentMedico) {
@@ -76,7 +76,7 @@ export default function Perfil({ navigation }) {
   };
 
   const getHeaderColor = () => {
-    switch (userRole?.toLowerCase()) {
+    switch (rolUsuario?.toLowerCase()) {
       case 'admin':
       case 'administrador':
         return '#1E88E5';
@@ -91,7 +91,7 @@ export default function Perfil({ navigation }) {
   };
 
   const getRoleIcon = () => {
-    switch (userRole?.toLowerCase()) {
+    switch (rolUsuario?.toLowerCase()) {
       case 'admin':
       case 'administrador':
         return '👨‍💼';
@@ -106,7 +106,7 @@ export default function Perfil({ navigation }) {
   };
 
   const getRoleText = () => {
-    switch (userRole?.toLowerCase()) {
+    switch (rolUsuario?.toLowerCase()) {
       case 'admin':
       case 'administrador':
         return 'Administrador';
@@ -140,7 +140,7 @@ export default function Perfil({ navigation }) {
           <View style={[styles.avatarLarge, { backgroundColor: getHeaderColor() + '20' }]}>
             <Text style={styles.avatarLargeText}>{getRoleIcon()}</Text>
           </View>
-          <Text style={styles.userName}>{user?.name || 'Usuario'}</Text>
+          <Text style={styles.usuarioName}>{usuario?.name || 'Usuario'}</Text>
           <View style={[styles.roleBadge, { backgroundColor: getHeaderColor() }]}>
             <Text style={styles.roleText}>{getRoleText()}</Text>
           </View>
@@ -156,7 +156,12 @@ export default function Perfil({ navigation }) {
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Nombre Completo</Text>
-                <Text style={styles.infoValue}>{user?.name || 'No disponible'}</Text>
+                <Text style={styles.infoValue}>
+                  {usuario?.nombre && usuario?.apellido 
+                    ? `${usuario.nombre} ${usuario.apellido}` 
+                    : usuario?.name || 'Nombre completo no disponible'
+                  }
+                </Text>
               </View>
             </View>
 
@@ -168,11 +173,11 @@ export default function Perfil({ navigation }) {
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Correo Electrónico</Text>
-                <Text style={styles.infoValue}>{user?.email || 'No disponible'}</Text>
+                <Text style={styles.infoValue}>{usuario?.email || 'No disponible'}</Text>
               </View>
             </View>
 
-            {(user?.telefono || medicoData?.telefono) && (
+            {(usuario?.telefono || medicoData?.telefono) && (
               <>
                 <View style={styles.divider} />
                 <View style={styles.infoRow}>
@@ -182,14 +187,14 @@ export default function Perfil({ navigation }) {
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Teléfono</Text>
                     <Text style={styles.infoValue}>
-                      {medicoData?.telefono || user?.telefono}
+                      {medicoData?.telefono || usuario?.telefono}
                     </Text>
                   </View>
                 </View>
               </>
             )}
 
-            {user?.direccion && (
+            {usuario?.direccion && (
               <>
                 <View style={styles.divider} />
                 <View style={styles.infoRow}>
@@ -198,13 +203,13 @@ export default function Perfil({ navigation }) {
                   </View>
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Dirección</Text>
-                    <Text style={styles.infoValue}>{user.direccion}</Text>
+                    <Text style={styles.infoValue}>{usuario.direccion}</Text>
                   </View>
                 </View>
               </>
             )}
 
-            {user?.fecha_nacimiento && (
+            {usuario?.fecha_nacimiento && (
               <>
                 <View style={styles.divider} />
                 <View style={styles.infoRow}>
@@ -213,13 +218,13 @@ export default function Perfil({ navigation }) {
                   </View>
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Fecha de Nacimiento</Text>
-                    <Text style={styles.infoValue}>{user.fecha_nacimiento}</Text>
+                    <Text style={styles.infoValue}>{usuario.fecha_nacimiento}</Text>
                   </View>
                 </View>
               </>
             )}
 
-            {user?.cedula && (
+            {usuario?.cedula && (
               <>
                 <View style={styles.divider} />
                 <View style={styles.infoRow}>
@@ -228,7 +233,7 @@ export default function Perfil({ navigation }) {
                   </View>
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Cédula</Text>
-                    <Text style={styles.infoValue}>{user.cedula}</Text>
+                    <Text style={styles.infoValue}>{usuario.cedula}</Text>
                   </View>
                 </View>
               </>
@@ -236,7 +241,7 @@ export default function Perfil({ navigation }) {
           </View>
         </View>
 
-        {(userRole?.toLowerCase() === 'medico' || userRole?.toLowerCase() === 'doctor') && medicoData && (
+        {(rolUsuario?.toLowerCase() === 'medico' || rolUsuario?.toLowerCase() === 'doctor') && medicoData && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Información Profesional</Text>
             <View style={styles.infoCard}>
@@ -370,7 +375,7 @@ const styles = StyleSheet.create({
   avatarLargeText: {
     fontSize: 48,
   },
-  userName: {
+  usuarioName: {
     fontSize: 24,
     fontWeight: '700',
     color: '#1A1A1A',

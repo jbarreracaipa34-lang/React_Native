@@ -6,20 +6,20 @@ import AuthService from '../../Src/Services/AuthService';
 import NavigationService from '../../Src/Services/NavegationService';
 
 export default function MedicoInicio({ navigation }) {
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [horarios, setHorarios] = useState([]);
   const [citasHoy, setCitasHoy] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadUserData();
+    loadUsuarioData();
     loadMedicoData();
   }, []);
 
-  const loadUserData = async () => {
+  const loadUsuarioData = async () => {
     const authData = await AuthService.isAuthenticated();
     if (authData.isAuthenticated) {
-      setUser(authData.user);
+      setUsuario(authData.usuario);
     }
   };
 
@@ -81,7 +81,12 @@ export default function MedicoInicio({ navigation }) {
           </View>
           <View>
             <Text style={styles.welcomeText}>¡Hola Doctor!</Text>
-            <Text style={styles.nameText}>{user?.name || 'Medico'}</Text>
+            <Text style={styles.nameText}>
+              {usuario?.nombre && usuario?.apellido 
+                ? `${usuario.nombre} ${usuario.apellido}` 
+                : usuario?.name || 'Medico'
+              }
+            </Text>
           </View>
         </View>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>

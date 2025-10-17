@@ -7,7 +7,7 @@ import AuthService from '../../Src/Services/AuthService';
 
 export default function Crear_EditarMedicos({ navigation, route }) {
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [especialidades, setEspecialidades] = useState([]);
   const [loadingEspecialidades, setLoadingEspecialidades] = useState(false);
   const [especialidadesError, setEspecialidadesError] = useState(null);
@@ -17,7 +17,9 @@ export default function Crear_EditarMedicos({ navigation, route }) {
     numeroLicencia: '',
     telefono: '',
     email: '',
-    especialidad_id: ''
+    especialidad_id: '',
+    password: '',
+    password_confirmation: ''
   });
   const [errors, setErrors] = useState({});
   
@@ -25,18 +27,18 @@ export default function Crear_EditarMedicos({ navigation, route }) {
   const isEditing = !!medicoAEditar;
 
   useEffect(() => {
-    loadUserData();
+    loadUsuarioData();
     loadEspecialidades();
     if (isEditing && medicoAEditar) {
       cargarDatosMedico();
     }
   }, []);
 
-  const loadUserData = async () => {
+  const loadUsuarioData = async () => {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
       }
     } catch (error) {
       Alert.alert('Error', 'No se pudo cargar la informacion del usuario');
@@ -48,7 +50,7 @@ export default function Crear_EditarMedicos({ navigation, route }) {
       setLoadingEspecialidades(true);
       setEspecialidadesError(null);
       const response = await AuthService.getEspecialidades();
-      if (response && response.data) {
+      if (response.success && response.data) {
         setEspecialidades(response.data);
       }
     } catch (error) {
@@ -101,7 +103,9 @@ export default function Crear_EditarMedicos({ navigation, route }) {
         numeroLicencia: medicoAEditar.numeroLicencia || '',
         telefono: medicoAEditar.telefono || '',
         email: medicoAEditar.email || '',
-        especialidad_id: medicoAEditar.especialidad_id || ''
+        especialidad_id: medicoAEditar.especialidad_id || '',
+        password: '', // Solo para nuevos médicos
+        password_confirmation: '' // Solo para nuevos médicos
       });
     }
   };
@@ -149,6 +153,21 @@ export default function Crear_EditarMedicos({ navigation, route }) {
       newErrors.especialidad_id = 'La especialidad es obligatoria';
     }
 
+    // Validación de contraseña solo para nuevos médicos
+    if (!isEditing) {
+      if (!formData.password.trim()) {
+        newErrors.password = 'La contraseña es obligatoria';
+      } else if (formData.password.length < 8) {
+        newErrors.password = 'La contraseña debe tener al menos 8 caracteres';
+      }
+
+      if (!formData.password_confirmation.trim()) {
+        newErrors.password_confirmation = 'La confirmación de contraseña es obligatoria';
+      } else if (formData.password !== formData.password_confirmation) {
+        newErrors.password_confirmation = 'Las contraseñas no coinciden';
+      }
+    }
+
     if (formData.telefono && !/^[\d\s\-\+\(\)]+$/.test(formData.telefono)) {
       newErrors.telefono = 'El telefono solo puede contener numeros, espacios, guiones, + y parentesis';
     }
@@ -167,7 +186,7 @@ export default function Crear_EditarMedicos({ navigation, route }) {
       return;
     }
 
-    if (!user) {
+    if (!usuario) {
       Alert.alert('Error', 'Sesion no valida. Por favor, reinicia la aplicacion.');
       return;
     }
@@ -189,19 +208,6 @@ export default function Crear_EditarMedicos({ navigation, route }) {
 
   const proceedWithSubmit = async () => {
     try {
-      const tokenVerification = await AuthService.verifyToken();
-      console.log('Verificacion de token:', tokenVerification);
-      
-      if (!tokenVerification.success) {
-        Alert.alert('Error', 'Tu sesion ha expirado. Por favor inicia sesion nuevamente.');
-        return;
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Problema de autenticacion. Por favor inicia sesion nuevamente.');
-      return;
-    }
-
-    try {
       setLoading(true);
 
       const medicoData = {
@@ -213,6 +219,11 @@ export default function Crear_EditarMedicos({ navigation, route }) {
         especialidad_id: formData.especialidad_id || null
       };
 
+      // Agregar campos de contraseña solo para nuevos médicos
+      if (!isEditing) {
+        medicoData.password = formData.password;
+        medicoData.password_confirmation = formData.password_confirmation;
+      }
 
       let response;
       if (isEditing) {
@@ -247,8 +258,8 @@ export default function Crear_EditarMedicos({ navigation, route }) {
         
         switch (status) {
           case 403:
-            if (data.debug?.user_role && data.debug?.allowed_roles) {
-              errorMessage = `Error de permisos: Tu rol (${data.debug.user_role}) no tiene acceso a esta funcion.\nRoles permitidos: ${data.debug.allowed_roles.join(', ')}`;
+            if (data.debug?.usuario_role && data.debug?.allowed_roles) {
+              errorMessage = `Error de permisos: Tu rol (${data.debug.usuario_role}) no tiene acceso a esta funcion.\nRoles permitidos: ${data.debug.allowed_roles.join(', ')}`;
             } else {
               errorMessage = 'No tienes permisos para realizar esta accion';
             }
@@ -265,7 +276,7 @@ export default function Crear_EditarMedicos({ navigation, route }) {
             errorMessage = 'Ya existe un medico con este numero de licencia o email';
             break;
           case 500:
-            if (data.message && (data.message.includes("user_id") || data.message.includes("Unknown column"))) {
+            if (data.message && (data.message.includes("usuario_id") || data.message.includes("Unknown column"))) {
               errorMessage = 'Error interno: estructura de datos incorrecta. Por favor contacta al administrador.';
             } else {
               errorMessage = data.message || `Error del servidor (${status})`;
@@ -292,12 +303,13 @@ export default function Crear_EditarMedicos({ navigation, route }) {
     placeholder,
     keyboardType = 'default',
     multiline = false,
-    maxLength = null
+    maxLength = null,
+    secureTextEntry = false
   ) => (
     <View style={styles.inputContainer}>
       <Text style={styles.inputLabel}>
         {label}
-        {['nombre', 'apellido', 'numeroLicencia', 'telefono', 'email'].includes(field) && (
+        {['nombre', 'apellido', 'numeroLicencia', 'telefono', 'email', 'password', 'password_confirmation'].includes(field) && (
           <Text style={styles.required}> *</Text>
         )}
       </Text>
@@ -316,6 +328,7 @@ export default function Crear_EditarMedicos({ navigation, route }) {
         maxLength={maxLength}
         autoCapitalize={field === 'email' ? 'none' : 'words'}
         autoCorrect={false}
+        secureTextEntry={secureTextEntry}
       />
       {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
     </View>
@@ -375,13 +388,15 @@ export default function Crear_EditarMedicos({ navigation, route }) {
             style={styles.picker}
           >
             <Picker.Item label="Seleccionar especialidad" value="" />
-            {especialidades.map((especialidad) => (
-              <Picker.Item
-                key={especialidad.id}
-                label={especialidad.nombre}
-                value={especialidad.id}
-              />
-            ))}
+            {especialidades && especialidades.length > 0 && especialidades.map((especialidad) => 
+              especialidad && especialidad.id ? (
+                <Picker.Item
+                  key={especialidad.id}
+                  label={especialidad.nombre}
+                  value={especialidad.id}
+                />
+              ) : null
+            )}
           </Picker>
         </View>
       )}
@@ -431,6 +446,14 @@ export default function Crear_EditarMedicos({ navigation, route }) {
           </View>
 
           {renderEspecialidadesPicker()}
+          
+          {/* Campos de contraseña solo para nuevos médicos */}
+          {!isEditing && (
+            <>
+              {renderInput('Contraseña', 'password', 'Ingrese la contraseña', 'default', false, null, true)}
+              {renderInput('Confirmar Contraseña', 'password_confirmation', 'Confirme la contraseña', 'default', false, null, true)}
+            </>
+          )}
         </View>
 
         <View style={styles.actionButtons}>
@@ -445,7 +468,7 @@ export default function Crear_EditarMedicos({ navigation, route }) {
           <TouchableOpacity
             style={[styles.saveButton, loading && styles.saveButtonDisabled]}
             onPress={handleSubmit}
-            disabled={loading || !user}
+            disabled={loading || !usuario}
           >
             {loading ? (
               <ActivityIndicator color="#FFF" size="small" />
@@ -622,19 +645,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  userInfoContainer: {
+  usuarioInfoContainer: {
     backgroundColor: '#F8F9FA',
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
-  userInfo: {
+  usuarioInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
   },
-  userInfoText: {
+  usuarioInfoText: {
     marginLeft: 8,
     fontSize: 14,
     color: '#333',

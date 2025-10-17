@@ -1,20 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, ScrollView} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AuthService from '../../Src/Services/AuthService';
 
-export default function EliminarPacientes({ route, navigation }) {
-  const { paciente } = route.params;
+export default function EliminarAdmin({ route, navigation }) {
+  const { admin } = route.params;
   const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [usuario, setUsuario] = useState(null);
 
   useEffect(() => {
-    loadUserData();
+    loadUsuarioData();
   }, []);
 
-  const loadUserData = async () => {
+  const loadUsuarioData = async () => {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
@@ -26,46 +26,53 @@ export default function EliminarPacientes({ route, navigation }) {
   };
 
   const handleConfirmarEliminar = async () => {
-    if (!paciente?.id) {
-      Alert.alert('Error', 'No se ha proporcionado un ID de paciente válido');
+    if (!admin?.id) {
+      Alert.alert('Error', 'No se ha proporcionado un ID de administrador válido');
       return;
     }
 
     if (usuario?.role !== 'admin') {
-      Alert.alert('Error', 'Solo los administradores pueden eliminar pacientes');
+      Alert.alert('Error', 'Solo los administradores pueden eliminar otros administradores');
+      return;
+    }
+
+    // Verificar que no se esté eliminando a sí mismo
+    if (usuario?.id === admin.id) {
+      Alert.alert('Error', 'No puedes eliminar tu propia cuenta');
       return;
     }
 
     setCargando(true);
     try {
-      const response = await AuthService.eliminarPaciente(paciente.id);
+      const response = await AuthService.eliminarAdmin(admin.id);
       
       setMostrarConfirmacion(false);
       
       Alert.alert(
         'Éxito',
-        'El paciente y su usuario han sido eliminados correctamente.',
+        'El administrador ha sido eliminado correctamente.',
         [
           { 
             text: 'OK', 
             onPress: () => {
-              navigation.goBack();
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'ListarAdmins' }]
+              });
             }
           }
         ]
       );
     } catch (error) {
-      console.error('Error al eliminar el paciente:', error);
+      console.error('Error al eliminar administrador:', error);
       
-      let mensaje = 'No se pudo eliminar el paciente. Inténtelo de nuevo.';
+      let mensaje = 'No se pudo eliminar el administrador. Inténtelo de nuevo.';
       
       if (error.response) {
         if (error.response.status === 404) {
-          mensaje = 'El paciente ya no existe.';
+          mensaje = 'El administrador ya no existe.';
         } else if (error.response.status === 403) {
-          mensaje = 'No tienes permisos para eliminar este paciente.';
-        } else if (error.response.status === 409) {
-          mensaje = 'No se puede eliminar el paciente porque tiene citas asociadas. Elimina primero las citas.';
+          mensaje = 'No tienes permisos para eliminar este administrador.';
         } else if (error.response.data?.message) {
           mensaje = error.response.data.message;
         }
@@ -79,55 +86,58 @@ export default function EliminarPacientes({ route, navigation }) {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString || dateString === 'No disponible') return 'No disponible';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
-  };
-
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
+      
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Eliminar Administrador</Text>
+        </View>
+        <View style={styles.placeholder} />
+      </View>
       
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         {!mostrarConfirmacion ? (
           <View style={styles.infoContainer}>
             <View style={styles.iconContainer}>
               <View style={styles.iconCircle}>
-                <Ionicons name="person" size={48} color="#2196F3" />
+                <MaterialCommunityIcons name="account-cog" size={48} color="#4CAF50" />
               </View>
             </View>
             
-            <Text style={styles.title}>Detalles del Paciente</Text>
+            <Text style={styles.title}>Detalles del Administrador</Text>
             
             <View style={styles.warningBox}>
               <Ionicons name="information-circle" size={24} color="#FF9800" />
               <Text style={styles.warningText}>
-                Al eliminar este paciente también se eliminará su usuario asociado del sistema
+                Al eliminar este administrador también se eliminará su usuario asociado del sistema
               </Text>
             </View>
 
-            <View style={styles.pacienteInfo}>
+            <View style={styles.adminInfo}>
               <View style={styles.infoItem}>
                 <Ionicons name="person-outline" size={20} color="#666" />
                 <View style={styles.infoText}>
                   <Text style={styles.infoLabel}>Nombre Completo</Text>
                   <Text style={styles.infoValue}>
-                    {paciente?.nombre || ''} {paciente?.apellido || ''}
+                    {admin?.nombre || ''} {admin?.apellido || ''}
                   </Text>
                 </View>
               </View>
 
               <View style={styles.infoItem}>
-                <Ionicons name="card-outline" size={20} color="#666" />
+                <MaterialCommunityIcons name="shield-check" size={20} color="#666" />
                 <View style={styles.infoText}>
-                  <Text style={styles.infoLabel}>Documento</Text>
+                  <Text style={styles.infoLabel}>Rol</Text>
                   <Text style={styles.infoValue}>
-                    {paciente?.tipoDocumento || 'CC'} - {paciente?.documento || paciente?.numeroDocumento || 'No disponible'}
+                    Administrador
                   </Text>
                 </View>
               </View>
@@ -137,17 +147,7 @@ export default function EliminarPacientes({ route, navigation }) {
                 <View style={styles.infoText}>
                   <Text style={styles.infoLabel}>Email</Text>
                   <Text style={styles.infoValue}>
-                    {paciente?.email || 'No disponible'}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.infoItem}>
-                <Ionicons name="call-outline" size={20} color="#666" />
-                <View style={styles.infoText}>
-                  <Text style={styles.infoLabel}>Teléfono</Text>
-                  <Text style={styles.infoValue}>
-                    {paciente?.telefono || 'No disponible'}
+                    {admin?.email || 'No disponible'}
                   </Text>
                 </View>
               </View>
@@ -155,45 +155,20 @@ export default function EliminarPacientes({ route, navigation }) {
               <View style={styles.infoItem}>
                 <Ionicons name="calendar-outline" size={20} color="#666" />
                 <View style={styles.infoText}>
-                  <Text style={styles.infoLabel}>Fecha de Nacimiento</Text>
+                  <Text style={styles.infoLabel}>Fecha de Registro</Text>
                   <Text style={styles.infoValue}>
-                    {formatDate(paciente?.fechaNacimiento)}
+                    {admin?.created_at ? new Date(admin.created_at).toLocaleDateString('es-ES') : 'No disponible'}
                   </Text>
                 </View>
               </View>
-
-              <View style={styles.infoItem}>
-                <Ionicons name="medkit-outline" size={20} color="#666" />
-                <View style={styles.infoText}>
-                  <Text style={styles.infoLabel}>EPS</Text>
-                  <Text style={styles.infoValue}>
-                    {paciente?.eps || 'No disponible'}
-                  </Text>
-                </View>
-              </View>
-
-              {paciente?.citas && paciente.citas.length > 0 && (
-                <View style={styles.infoItem}>
-                  <Ionicons name="calendar" size={20} color="#FF9800" />
-                  <View style={styles.infoText}>
-                    <Text style={styles.infoLabel}>Citas Registradas</Text>
-                    <Text style={[styles.infoValue, { color: '#FF9800', fontWeight: '600' }]}>
-                      {paciente.citas.length} cita(s)
-                    </Text>
-                  </View>
-                </View>
-              )}
             </View>
 
-            {paciente?.citas && paciente.citas.length > 0 && (
-              <View style={styles.citasWarning}>
-                <Ionicons name="warning" size={20} color="#F44336" />
-                <Text style={styles.citasWarningText}>
-                  Este paciente tiene {paciente.citas.length} cita(s) registrada(s). 
-                  Es posible que no se pueda eliminar hasta que se eliminen primero las citas asociadas.
-                </Text>
-              </View>
-            )}
+            <View style={styles.citasWarning}>
+              <Ionicons name="warning" size={20} color="#F44336" />
+              <Text style={styles.citasWarningText}>
+                Esta acción eliminará permanentemente el administrador y todos sus datos asociados.
+              </Text>
+            </View>
 
             <TouchableOpacity
               style={styles.botonEliminar}
@@ -201,7 +176,7 @@ export default function EliminarPacientes({ route, navigation }) {
               disabled={cargando}
             >
               <Ionicons name="trash-outline" size={20} color="#FFF" />
-              <Text style={styles.textoBoton}>Eliminar Paciente</Text>
+              <Text style={styles.textoBoton}>Eliminar Administrador</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -217,7 +192,7 @@ export default function EliminarPacientes({ route, navigation }) {
               <Ionicons name="warning" size={64} color="#EF6C00" />
             </View>
             
-            <Text style={styles.confirmTitle}>¿Eliminar Paciente?</Text>
+            <Text style={styles.confirmTitle}>¿Eliminar Administrador?</Text>
             <Text style={styles.confirmSubtitle}>
               Esta acción eliminará:
             </Text>
@@ -226,7 +201,7 @@ export default function EliminarPacientes({ route, navigation }) {
               <View style={styles.deleteItem}>
                 <Ionicons name="checkmark-circle" size={20} color="#F44336" />
                 <Text style={styles.deleteItemText}>
-                  El paciente: {paciente?.nombre} {paciente?.apellido}
+                  El administrador: {admin?.nombre} {admin?.apellido}
                 </Text>
               </View>
               <View style={styles.deleteItem}>
@@ -241,6 +216,12 @@ export default function EliminarPacientes({ route, navigation }) {
                   Su acceso a la aplicación
                 </Text>
               </View>
+              <View style={styles.deleteItem}>
+                <Ionicons name="checkmark-circle" size={20} color="#F44336" />
+                <Text style={styles.deleteItemText}>
+                  Todos sus permisos administrativos
+                </Text>
+              </View>
             </View>
 
             <Text style={styles.confirmWarning}>
@@ -250,7 +231,7 @@ export default function EliminarPacientes({ route, navigation }) {
             {cargando ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#C62828" />
-                <Text style={styles.loadingText}>Eliminando paciente...</Text>
+                <Text style={styles.loadingText}>Eliminando administrador...</Text>
               </View>
             ) : (
               <View style={styles.botonesConfirm}>
@@ -282,6 +263,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
+  header: {
+    backgroundColor: '#FFF',
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  backButton: {
+    marginRight: 16,
+  },
+  headerCenter: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+  },
+  placeholder: {
+    width: 40,
+  },
   content: {
     flex: 1,
   },
@@ -302,7 +310,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#E8F5E9',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -329,7 +337,7 @@ const styles = StyleSheet.create({
     color: '#E65100',
     lineHeight: 18,
   },
-  pacienteInfo: {
+  adminInfo: {
     width: '100%',
     marginBottom: 24,
   },

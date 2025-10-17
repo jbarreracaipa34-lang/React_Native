@@ -1,17 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AuthService from '../../Src/Services/AuthService';
 
-export default function ListarMedicos({ navigation }) {
+export default function ListarAdmins({ navigation }) {
   const [usuario, setUsuario] = useState(null);
-  const [medicos, setMedicos] = useState([]);
-  const [filteredMedicos, setFilteredMedicos] = useState([]);
+  const [admins, setAdmins] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [filtroEspecialidad, setFiltroEspecialidad] = useState('todas');
-  const [medicoExpandido, setMedicoExpandido] = useState(null);
+  const [adminExpandido, setAdminExpandido] = useState(null);
 
   useEffect(() => {
     loadUsuarioData();
@@ -19,13 +16,9 @@ export default function ListarMedicos({ navigation }) {
 
   useEffect(() => {
     if (usuario) {
-      loadMedicos();
+      loadAdmins();
     }
   }, [usuario]);
-
-  useEffect(() => {
-    aplicarFiltros();
-  }, [medicos, filtroEspecialidad]);
 
   const loadUsuarioData = async () => {
     try {
@@ -38,173 +31,120 @@ export default function ListarMedicos({ navigation }) {
     }
   };
 
-  const loadMedicos = async () => {
+  const loadAdmins = async () => {
     try {
-      setLoading(true);
-      const medicosResult = await AuthService.getMedicosConEspecialidades();
+      const adminsResult = await AuthService.getAdmins();
 
-      if (medicosResult.success && medicosResult.data && Array.isArray(medicosResult.data)) {
-        const medicosConDefaults = medicosResult.data.map(medico => ({
-          ...medico,
-          especialidad_nombre: medico.especialidad_nombre || 'Sin especialidad',
-          telefono: medico.telefono || 'No disponible',
-          email: medico.email || 'No disponible',
-          horarios_disponibles: medico.horarios_disponibles || []
-        }));
-
-        setMedicos(medicosConDefaults);
+      if (adminsResult.success && adminsResult.data && Array.isArray(adminsResult.data)) {
+        setAdmins(adminsResult.data);
       } else {
-        setMedicos([]);
+        setAdmins([]);
       }
     } catch (error) {
-      console.error('Error loading medicos:', error);
-      setMedicos([]);
-      Alert.alert('Error', 'No se pudieron cargar los medicos: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const aplicarFiltros = () => {
-    if (filtroEspecialidad === 'todas') {
-      setFilteredMedicos(medicos);
-    } else {
-      const medicosFiltrados = medicos.filter(medico =>
-        medico.especialidad_nombre?.toLowerCase() === filtroEspecialidad.toLowerCase()
-      );
-      setFilteredMedicos(medicosFiltrados);
+      console.error('Error loading admins:', error);
+      setAdmins([]);
+      Alert.alert('Error', 'No se pudieron cargar los administradores: ' + error.message);
     }
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadMedicos();
+    await loadAdmins();
     setRefreshing(false);
   };
 
-  const handleMedicoPress = (medico) => {
-    if (medicoExpandido === medico.id) {
-      setMedicoExpandido(null);
+  const handleAdminPress = (admin) => {
+    if (adminExpandido === admin.id) {
+      setAdminExpandido(null);
     } else {
-      setMedicoExpandido(medico.id);
+      setAdminExpandido(admin.id);
     }
   };
 
-  const handleEditarMedico = (medico) => {
-    if (usuario?.role === 'paciente') {
-      Alert.alert('Acceso denegado', 'Los pacientes no pueden editar informacion de medicos');
+  const handleEditarAdmin = (admin) => {
+    if (usuario?.role !== 'admin') {
+      Alert.alert('Acceso denegado', 'Solo los administradores pueden editar otros administradores');
       return;
     }
 
-    if (usuario?.role === 'medico' && String(medico.usuario_id) !== String(usuario.id)) {
-      Alert.alert('Acceso denegado', 'No puedes modificar datos de otros medicos');
-      return;
-    }
-
-    navigation.navigate('Crear_EditarMedicos', { medico: medico });
+    navigation.navigate('Crear_EditarAdmin', { admin: admin });
   };
 
-  const handleEliminarMedico = (medico) => {
-    if (usuario?.role === 'paciente') {
-      Alert.alert('Acceso denegado', 'Los pacientes no pueden eliminar medicos');
+  const handleEliminarAdmin = (admin) => {
+    if (usuario?.role !== 'admin') {
+      Alert.alert('Acceso denegado', 'Solo los administradores pueden eliminar otros administradores');
       return;
     }
 
-    if (usuario?.role === 'medico') {
-      Alert.alert('Acceso denegado', 'No puedes modificar datos de otros medicos');
-      return;
-    }
-
-    navigation.navigate('EliminarMedicos', { medico: medico });
+    navigation.navigate('EliminarAdmin', { admin: admin });
   };
 
-  const renderAccionesMedico = (medico) => {
-    if (medicoExpandido !== medico.id) return null;
+  const renderAccionesAdmin = (admin) => {
+    if (adminExpandido !== admin.id) return null;
 
     return (
       <View style={styles.accionesContainer}>
-        {usuario?.role === 'paciente' && (
-          <View style={styles.horariosContainer}>
-            <Text style={styles.horariosTitle}>Horarios disponibles:</Text>
-            <View style={styles.horariosGrid}>
-              {medico.horarios_disponibles && medico.horarios_disponibles.length > 0 ? (
-                medico.horarios_disponibles.map((horario, index) => (
-                  <View key={index} style={styles.horarioChip}>
-                    <Text style={styles.horarioText}>
-                      {horario.diaSemana}: {horario.horaInicio} - {horario.horaFin}
-                    </Text>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.noHorariosText}>No hay horarios disponibles</Text>
-              )}
-            </View>
-          </View>
-        )}
-
-        <View style={styles.accionesMedico}>
+        <View style={styles.accionesAdmin}>
           <TouchableOpacity
             style={[styles.botonAccion, { borderColor: '#1E88E5' }]}
-            onPress={() => navigation.navigate('DetalleMedicos', { medico: medico })}
+            onPress={() => navigation.navigate('DetalleAdmin', { admin: admin })}
           >
             <Ionicons name="eye-outline" size={18} color="#1E88E5" />
           </TouchableOpacity>
 
-          {(usuario?.role === 'admin' || usuario?.role === 'medico') && (
-            <TouchableOpacity
-              style={[styles.botonAccion, { borderColor: '#4CAF50' }]}
-              onPress={() => handleEditarMedico(medico)}
-            >
-              <Ionicons name="create-outline" size={18} color="#4CAF50" />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={[styles.botonAccion, { borderColor: '#4CAF50' }]}
+            onPress={() => handleEditarAdmin(admin)}
+          >
+            <Ionicons name="create-outline" size={18} color="#4CAF50" />
+          </TouchableOpacity>
 
-          {usuario?.role === 'admin' && (
-            <TouchableOpacity
-              style={[styles.botonAccion, { borderColor: '#F44336' }]}
-              onPress={() => handleEliminarMedico(medico)}
-            >
-              <Ionicons name="trash-outline" size={18} color="#F44336" />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={[styles.botonAccion, { borderColor: '#F44336' }]}
+            onPress={() => handleEliminarAdmin(admin)}
+          >
+            <Ionicons name="trash-outline" size={18} color="#F44336" />
+          </TouchableOpacity>
         </View>
       </View>
     );
   };
 
-  const renderMedicoItem = (medico, index) => {
-    const isExpanded = medicoExpandido === medico.id;
+  const renderAdminItem = (admin, index) => {
+    const isExpanded = adminExpandido === admin.id;
 
     return (
-      <View key={medico.id || index} style={styles.medicoContainer}>
+      <View key={admin.id || index} style={styles.adminContainer}>
         <TouchableOpacity
-          style={[styles.medicoItem, isExpanded && styles.medicoItemExpanded]}
-          onPress={() => handleMedicoPress(medico)}
+          style={[styles.adminItem, isExpanded && styles.adminItemExpanded]}
+          onPress={() => handleAdminPress(admin)}
           activeOpacity={0.7}
         >
-          <View style={styles.medicoHeader}>
-            <View style={styles.medicoInfo}>
-              <View style={styles.doctorInfo}>
-                <Text style={styles.doctorName}>
-                  Dr. {medico.nombre || ''} {medico.apellido || ''}
+          <View style={styles.adminHeader}>
+            <View style={styles.adminInfo}>
+              <View style={styles.adminDetails}>
+                <Text style={styles.adminName}>
+                  {admin.nombre || ''} {admin.apellido || ''}
                 </Text>
-                <Text style={styles.specialty}>
-                  {medico.especialidad_nombre}
+                <Text style={styles.adminRole}>
+                  Administrador
                 </Text>
-                <Text style={styles.licencia}>
-                  Lic. {medico.numeroLicencia || 'No disponible'}
+                <Text style={styles.adminId}>
+                  ID: {admin.id || 'No disponible'}
                 </Text>
               </View>
 
               <View style={styles.contactContainer}>
                 <View style={styles.contactRow}>
-                  <Ionicons name="call-outline" size={14} color="#666" />
-                  <Text style={styles.contactText}>{medico.telefono}</Text>
-                </View>
-                <View style={styles.contactRow}>
                   <Ionicons name="mail-outline" size={14} color="#666" />
                   <Text style={styles.contactText} numberOfLines={1}>
-                    {medico.email}
+                    {admin.email || 'No disponible'}
+                  </Text>
+                </View>
+                <View style={styles.contactRow}>
+                  <Ionicons name="calendar-outline" size={14} color="#666" />
+                  <Text style={styles.contactText}>
+                    {admin.created_at ? new Date(admin.created_at).toLocaleDateString('es-ES') : 'No disponible'}
                   </Text>
                 </View>
               </View>
@@ -212,31 +152,28 @@ export default function ListarMedicos({ navigation }) {
           </View>
         </TouchableOpacity>
 
-        {renderAccionesMedico(medico)}
+        {renderAccionesAdmin(admin)}
       </View>
     );
   };
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <MaterialCommunityIcons name="doctor" size={64} color="#CCC" />
-      <Text style={styles.emptyTitle}>No hay medicos</Text>
+      <MaterialCommunityIcons name="account-group" size={64} color="#CCC" />
+      <Text style={styles.emptyTitle}>No hay administradores</Text>
       <Text style={styles.emptyText}>
-        {filtroEspecialidad === 'todas'
-          ? 'No hay medicos registrados'
-          : `No hay medicos de ${filtroEspecialidad}`
-        }
+        No hay administradores registrados en el sistema
       </Text>
       {usuario?.role === 'admin' && (
         <TouchableOpacity
           style={styles.emptyButton}
-          onPress={() => navigation.navigate('Crear_EditarMedicos')}
+          onPress={() => navigation.navigate('Crear_EditarAdmin')}
         >
-          <Text style={styles.emptyButtonText}>Agregar primer medico</Text>
+          <Text style={styles.emptyButtonText}>Agregar primer administrador</Text>
         </TouchableOpacity>
       )}
     </View>
-  );  
+  );
 
   return (
     <View style={styles.container}>
@@ -253,17 +190,20 @@ export default function ListarMedicos({ navigation }) {
               <Text style={styles.appSubtitle}>Tu salud en tus manos</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.profileButton}>
-            <Ionicons name="person-outline" size={24} color="#333" />
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
         </View>
 
         <View style={styles.titleContainer}>
-          <Text style={styles.screenTitle}>Medicos</Text>
+          <Text style={styles.screenTitle}>Administradores</Text>
           {usuario?.role === 'admin' && (
             <TouchableOpacity
               style={styles.newButton}
-              onPress={() => navigation.navigate('Crear_EditarMedicos')}
+              onPress={() => navigation.navigate('Crear_EditarAdmin')}
             >
               <Ionicons name="add" size={20} color="#FFF" />
               <Text style={styles.newButtonText}>Nuevo</Text>
@@ -274,34 +214,34 @@ export default function ListarMedicos({ navigation }) {
 
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{medicos.length}</Text>
+          <Text style={styles.statNumber}>{admins.length}</Text>
           <Text style={styles.statLabel}>Total</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>
-            {new Set(medicos.map(m => m.especialidad_nombre)).size}
+            {admins.filter(a => a.email && a.email !== 'No disponible').length}
           </Text>
-          <Text style={styles.statLabel}>Especialidades</Text>
+          <Text style={styles.statLabel}>Con Email</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>
-            {medicos.filter(m => m.telefono && m.telefono !== 'No disponible').length}
+            {admins.filter(a => a.created_at).length}
           </Text>
-          <Text style={styles.statLabel}>Con Telefono</Text>
+          <Text style={styles.statLabel}>Registrados</Text>
         </View>
       </View>
 
       <ScrollView
-        style={styles.medicosList}
-        contentContainerStyle={styles.medicosContent}
+        style={styles.adminsList}
+        contentContainerStyle={styles.adminsContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {filteredMedicos.length > 0 ? (
+        {admins.length > 0 ? (
           <>
             <View style={styles.listHeader}>
-              <Text style={styles.listTitle}>Lista de Medicos</Text>
+              <Text style={styles.listTitle}>Lista de Administradores</Text>
             </View>
-            {filteredMedicos.map((medico, index) => renderMedicoItem(medico, index))}
+            {admins.map((admin, index) => renderAdminItem(admin, index))}
           </>
         ) : (
           renderEmptyState()
@@ -419,25 +359,10 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
   },
-  searchContainer: {
-    backgroundColor: '#FFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  searchPlaceholder: {
-    marginLeft: 12,
-    fontSize: 14,
-    color: '#999',
-  },
-  medicosList: {
+  adminsList: {
     flex: 1,
   },
-  medicosContent: {
+  adminsContent: {
     paddingBottom: 20,
   },
   listHeader: {
@@ -449,47 +374,47 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
-  medicoContainer: {
+  adminContainer: {
     marginHorizontal: 20,
     marginBottom: 1,
   },
-  medicoItem: {
+  adminItem: {
     backgroundColor: '#FFF',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderLeftWidth: 4,
     borderLeftColor: '#E0E0E0',
   },
-  medicoItemExpanded: {
+  adminItemExpanded: {
     borderLeftColor: '#2196F3',
   },
-  medicoHeader: {
+  adminHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  medicoInfo: {
+  adminInfo: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  doctorInfo: {
+  adminDetails: {
     flex: 1,
   },
-  doctorName: {
+  adminName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
     marginBottom: 4,
   },
-  specialty: {
+  adminRole: {
     fontSize: 14,
     color: '#2196F3',
     fontWeight: '500',
     marginBottom: 2,
   },
-  licencia: {
+  adminId: {
     fontSize: 12,
     color: '#666',
   },
@@ -514,39 +439,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#2196F3',
   },
-  horariosContainer: {
-    marginBottom: 16,
-  },
-  horariosTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  horariosGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  horarioChip: {
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 4,
-    marginBottom: 4,
-  },
-  horarioText: {
-    fontSize: 12,
-    color: '#1976D2',
-    fontWeight: '500',
-  },
-  noHorariosText: {
-    fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
-  },
-  accionesMedico: {
+  accionesAdmin: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 12,
@@ -595,3 +488,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+

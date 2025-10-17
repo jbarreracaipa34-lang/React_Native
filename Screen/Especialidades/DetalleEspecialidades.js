@@ -6,21 +6,21 @@ import AuthService from '../../Src/Services/AuthService';
 
 export default function DetalleEspecialidades({ route, navigation }) {
   const { especialidad } = route.params;
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [especialidadDetallada, setEspecialidadDetallada] = useState(especialidad);
   const [medicosCount, setMedicosCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    loadUserData();
+    loadUsuarioData();
     cargarDetallesCompletos();
   }, []);
 
-  const loadUserData = async () => {
+  const loadUsuarioData = async () => {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
       }
     } catch (error) {
       console.error('Error al cargar usuario:', error);

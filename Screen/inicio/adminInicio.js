@@ -6,13 +6,13 @@ import AuthService from '../../Src/Services/AuthService';
 import NavigationService from '../../Src/Services/NavegationService';
 
 export default function AdminInicio({ navigation }) {
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
 
   useEffect(() => {
     const init = async () => {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
       } else {
         console.warn('Usuario no autenticado');
         Alert.alert('Sesion invalida', 'Por favor inicia sesion nuevamente');
@@ -38,8 +38,12 @@ export default function AdminInicio({ navigation }) {
     );
   };
 
+  const navigateToRegistrarAdmin = () => {
+    NavigationService.navigate('AdminStack');
+  };
+
   const navigateToPerfil = () => {
-    navigation.getParent()?.navigate('Perfil');
+    NavigationService.navigate('Perfil');
   };
 
   return (
@@ -53,7 +57,12 @@ export default function AdminInicio({ navigation }) {
           </View>
           <View>
             <Text style={styles.welcomeText}>¡Hola Admin!</Text>
-            <Text style={styles.nameText}>{user?.name || 'Administrador'}</Text>
+            <Text style={styles.nameText}>
+              {usuario?.nombre && usuario?.apellido 
+                ? `${usuario.nombre} ${usuario.apellido}` 
+                : usuario?.name || 'Administrador'
+              }
+            </Text>
           </View>
         </View>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -104,6 +113,15 @@ export default function AdminInicio({ navigation }) {
 
             <TouchableOpacity
               style={styles.actionCard}
+              onPress={navigateToRegistrarAdmin}
+            >
+              <MaterialCommunityIcons name="account-plus" size={40} color="#FF5722" />
+          <Text style={styles.actionTitle}>Gestionar Administradores</Text>
+          <Text style={styles.actionDescription}>Crear y administrar otros admins</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionCard}
               onPress={() => NavigationService.navigate('horariosDisponiblesStack', { screen: 'ListarhorariosDisponibles' })}
             >
               <MaterialCommunityIcons name="clock-outline" size={40} color="#FF5722" />
@@ -124,7 +142,7 @@ export default function AdminInicio({ navigation }) {
         >
           <TouchableOpacity 
             style={styles.navItem}
-            onPress={() => navigation.navigate('AdminInicio')}
+            onPress={() => NavigationService.navigate('AdminInicio')}
           >
             <MaterialCommunityIcons name="pulse" size={22} color="#1E88E5" />
             <Text style={[styles.navLabel, styles.navLabelActive]}>Inicio</Text>

@@ -6,7 +6,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import AuthService from '../../Src/Services/AuthService';
 
 export default function ListarCitas({ navigation }) {
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [citas, setCitas] = useState([]);
   const [filteredCitas, setFilteredCitas] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -21,13 +21,13 @@ export default function ListarCitas({ navigation }) {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      if (user.role === 'paciente') {
+    if (usuario) {
+      if (usuario.role === 'paciente') {
         obtenerInfoPaciente().then(info => {
           setPacienteInfo(info);
           loadCitas(true, info, null);
         });
-      } else if (user.role === 'medico') {
+      } else if (usuario.role === 'medico') {
         obtenerInfoMedico().then(info => {
           setMedicoInfo(info);
           loadCitas(true, null, info);
@@ -36,7 +36,7 @@ export default function ListarCitas({ navigation }) {
         loadCitas(true);
       }
     }
-  }, [user]);
+  }, [usuario]);
 
   useEffect(() => {
     aplicarFiltros();
@@ -44,17 +44,17 @@ export default function ListarCitas({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      if (user) {
+      if (usuario) {
         setTimeout(() => {
           loadCitas(false, pacienteInfo, medicoInfo);
         }, 100);
       }
-    }, [user, pacienteInfo, medicoInfo])
+    }, [usuario, pacienteInfo, medicoInfo])
   );
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      if (user) {
+      if (usuario) {
         setTimeout(() => {
           loadCitas(false, pacienteInfo, medicoInfo);
         }, 50);
@@ -62,7 +62,7 @@ export default function ListarCitas({ navigation }) {
     });
 
     return unsubscribe;
-  }, [navigation, user, pacienteInfo, medicoInfo]);
+  }, [navigation, usuario, pacienteInfo, medicoInfo]);
 
   const obtenerInfoMedico = async () => {
     try {
@@ -72,12 +72,12 @@ export default function ListarCitas({ navigation }) {
       if (Array.isArray(medicosData)) {
 
         let medicoEncontrado = medicosData.find(medico => 
-          medico.user_id && String(medico.user_id) === String(user.id)
+          medico.usuario_id && String(medico.usuario_id) === String(usuario.id)
         );
         
-        if (!medicoEncontrado && user.email) {
+        if (!medicoEncontrado && usuario.email) {
           medicoEncontrado = medicosData.find(medico => 
-            medico.email && medico.email.toLowerCase() === user.email.toLowerCase()
+            medico.email && medico.email.toLowerCase() === usuario.email.toLowerCase()
           );
         }
         
@@ -100,13 +100,13 @@ export default function ListarCitas({ navigation }) {
       if (pacientesResponse && pacientesResponse.data) {
 
         let pacienteEncontrado = pacientesResponse.data.find(paciente => 
-          paciente.user_id && String(paciente.user_id) === String(user.id)
+          paciente.usuario_id && String(paciente.usuario_id) === String(usuario.id)
         );
         
         if (!pacienteEncontrado) {
           pacienteEncontrado = pacientesResponse.data.find(paciente => {
-            const nombreCoincide = paciente.nombre && (user.nombre || user.name) && 
-              paciente.nombre.toLowerCase().trim() === (user.nombre || user.name).toLowerCase().trim();
+            const nombreCoincide = paciente.nombre && (usuario.nombre || usuario.name) && 
+              paciente.nombre.toLowerCase().trim() === (usuario.nombre || usuario.name).toLowerCase().trim();
             return nombreCoincide;
           });
         }
@@ -126,22 +126,22 @@ export default function ListarCitas({ navigation }) {
     try {      
       const authData = await AuthService.isAuthenticated();
       
-      if (authData.isAuthenticated && authData.user) {
-        setUser(authData.user);
+      if (authData.isAuthenticated && authData.usuario) {
+        setUsuario(authData.usuario);
       } else {
-        setUser(null);
+        setUsuario(null);
       }
       setLoading(false);
       
     } catch (error) {
-      setUser(null);
+      setUsuario(null);
       setLoading(false);
     }
   };
 
   const loadCitas = async (showLoading = false, pacienteInfoParam = null, medicoInfoParam = null) => {
     try {
-      if (!user || !user.role) {
+      if (!usuario || !usuario.role) {
         return;
       }
 
@@ -150,7 +150,7 @@ export default function ListarCitas({ navigation }) {
       }
       
       let infoMedico = medicoInfoParam || medicoInfo;
-      if (user.role === 'medico' && !infoMedico) {
+      if (usuario.role === 'medico' && !infoMedico) {
         infoMedico = await obtenerInfoMedico();
         if (infoMedico) {
           setMedicoInfo(infoMedico);
@@ -158,7 +158,7 @@ export default function ListarCitas({ navigation }) {
       }
       
       let infoPaciente = pacienteInfoParam || pacienteInfo;
-      if (user.role === 'paciente' && !infoPaciente) {
+      if (usuario.role === 'paciente' && !infoPaciente) {
         infoPaciente = await obtenerInfoPaciente();
         if (infoPaciente) {
           setPacienteInfo(infoPaciente);
@@ -170,7 +170,7 @@ export default function ListarCitas({ navigation }) {
       if (citasResult && citasResult.data && Array.isArray(citasResult.data)) {        
         let citasFiltradas = [];        
         
-        switch (user.role) {
+        switch (usuario.role) {
           case 'admin':
             citasFiltradas = citasResult.data;
             break;
@@ -391,7 +391,7 @@ export default function ListarCitas({ navigation }) {
   const renderAccionesCita = (cita) => {
     if (citaExpandida !== cita.id) return null;
 
-    const permisos = getPermisosRol(user?.role);
+    const permisos = getPermisosRol(usuario?.role);
 
     return (
       <View style={styles.accionesContainer}>
@@ -442,13 +442,13 @@ export default function ListarCitas({ navigation }) {
             <View style={styles.citaInfo}>
               <View style={styles.doctorInfo}>
                 <Text style={styles.doctorName}>
-                  {user?.role === 'medico' 
+                  {usuario?.role === 'medico' 
                     ? `${cita.paciente_nombre || 'Paciente'} ${cita.paciente_apellido || ''}`.trim()
                     : `Dr. ${cita.medico_nombre || ''} ${cita.medico_apellido || ''}`.trim()
                   }
                 </Text>
                 <Text style={styles.specialty}>
-                  {user?.role === 'admin' && (
+                  {usuario?.role === 'admin' && (
                     `Paciente: ${cita.paciente_nombre || ''} ${cita.paciente_apellido || ''}`
                   )}
                 </Text>
@@ -482,15 +482,15 @@ export default function ListarCitas({ navigation }) {
   };
 
   const renderEmptyState = () => {
-    const permisos = getPermisosRol(user?.role);
+    const permisos = getPermisosRol(usuario?.role);
     
     return (
       <View style={styles.emptyContainer}>
         <MaterialCommunityIcons name="calendar-clock" size={64} color="#CCC" />
         <Text style={styles.emptyTitle}>No hay citas</Text>
         <Text style={styles.emptyText}>
-          {user?.role === 'admin' ? 'No hay citas en el sistema' :
-           user?.role === 'medico' ? 'No tienes consultas programadas' :
+          {usuario?.role === 'admin' ? 'No hay citas en el sistema' :
+           usuario?.role === 'medico' ? 'No tienes consultas programadas' :
            filtroEstado === 'todas' ? 'No tienes citas programadas' : `No hay citas ${filtroEstado}`
           }
         </Text>
@@ -500,7 +500,7 @@ export default function ListarCitas({ navigation }) {
             onPress={() => navigation.navigate('Crear_EditarCitas')}
           >
             <Text style={styles.emptyButtonText}>
-              {user?.role === 'paciente' ? 'Agendar primera cita' : 'Nueva cita'}
+              {usuario?.role === 'paciente' ? 'Agendar primera cita' : 'Nueva cita'}
             </Text>
           </TouchableOpacity>
         )}
@@ -509,7 +509,7 @@ export default function ListarCitas({ navigation }) {
   };
 
   const getTituloScreen = () => {
-    switch (user?.role) {
+    switch (usuario?.role) {
       case 'admin':
         return 'Gestion de Citas';
       case 'medico':
@@ -522,7 +522,7 @@ export default function ListarCitas({ navigation }) {
   };
 
   const getTextoBotonNuevo = () => {
-    switch (user?.role) {
+    switch (usuario?.role) {
       case 'admin':
         return 'Nueva';
       case 'medico':
@@ -534,7 +534,7 @@ export default function ListarCitas({ navigation }) {
     }
   };
 
-  if (!user) {
+  if (!usuario) {
     return (
       <View style={styles.loadingContainer}>
         <MaterialCommunityIcons name="account-alert" size={64} color="#CCC" />
@@ -554,7 +554,7 @@ export default function ListarCitas({ navigation }) {
     );
   }
 
-  const permisos = getPermisosRol(user?.role);
+  const permisos = getPermisosRol(usuario?.role);
 
   return (
     <View style={styles.container}>
@@ -569,8 +569,8 @@ export default function ListarCitas({ navigation }) {
             <View>
               <Text style={styles.appName}>Citas Medicas</Text>
               <Text style={styles.appSubtitle}>
-                {user?.role === 'admin' ? 'Panel de administracion' :
-                 user?.role === 'medico' ? 'Portal medico' : 'Tu salud en tus manos'}
+                {usuario?.role === 'admin' ? 'Panel de administracion' :
+                 usuario?.role === 'medico' ? 'Portal medico' : 'Tu salud en tus manos'}
               </Text>
             </View>
           </View>
@@ -607,7 +607,7 @@ export default function ListarCitas({ navigation }) {
             {citas.filter(c => c.estado?.toLowerCase() === 'pendiente' || c.estado?.toLowerCase() === 'confirmado').length}
           </Text>
           <Text style={styles.statLabel}>
-            {user?.role === 'medico' ? 'Por atender' : 'Pendientes'}
+            {usuario?.role === 'medico' ? 'Por atender' : 'Pendientes'}
           </Text>
         </View>
         <View style={styles.statItem}>
@@ -615,7 +615,7 @@ export default function ListarCitas({ navigation }) {
             {citas.filter(c => c.estado?.toLowerCase() === 'completada' || c.estado?.toLowerCase() === 'completado').length}
           </Text>
           <Text style={styles.statLabel}>
-            {user?.role === 'medico' ? 'Atendidas' : 'Completadas'}
+            {usuario?.role === 'medico' ? 'Atendidas' : 'Completadas'}
           </Text>
         </View>
       </View>
@@ -643,7 +643,7 @@ export default function ListarCitas({ navigation }) {
           <>
             <View style={styles.listHeader}>
               <Text style={styles.listTitle}>
-                Lista de {user?.role === 'medico' ? 'Consultas' : 'Citas'} ({filteredCitas.length})
+                Lista de {usuario?.role === 'medico' ? 'Consultas' : 'Citas'} ({filteredCitas.length})
               </Text>
               <Text style={styles.lastUpdate}>
                 ultima actualizacion: {new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}

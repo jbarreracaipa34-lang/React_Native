@@ -7,19 +7,19 @@ import NavigationService from '../../Src/Services/NavegationService';
 
 
 export default function PacienteInicio({ navigation }) {
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [proximaCita, setProximaCita] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadUserData();
+    loadUsuarioData();
   }, []);
 
-  const loadUserData = async () => {
+  const loadUsuarioData = async () => {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
       }
     } catch (error) {
       console.error('Error al cargar usuario:', error);
@@ -108,7 +108,7 @@ export default function PacienteInicio({ navigation }) {
           </View>
           <View>
             <Text style={styles.welcomeText}>¡Hola!</Text>
-            <Text style={styles.nameText}>{user?.name || 'Paciente'}</Text>
+            <Text style={styles.nameText}>{usuario?.name || 'Paciente'}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>

@@ -7,7 +7,7 @@ import AuthService from '../../Src/Services/AuthService';
 
 export default function Crear_EditarPacientes({ navigation, route }) {
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -26,17 +26,17 @@ export default function Crear_EditarPacientes({ navigation, route }) {
   const isEditing = !!pacienteAEditar;
 
   useEffect(() => {
-    loadUserData();
+    loadUsuarioData();
     if (isEditing && pacienteAEditar) {
       cargarDatosPaciente();
     }
   }, []);
 
-  const loadUserData = async () => {
+  const loadUsuarioData = async () => {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
       }
     } catch (error) {
       Alert.alert('Error', 'No se pudo cargar la informacion del usuario');
@@ -129,7 +129,7 @@ export default function Crear_EditarPacientes({ navigation, route }) {
     return;
   }
 
-  if (!user) {
+  if (!usuario) {
     Alert.alert('Error', 'Sesion no valida. Por favor, reinicia la aplicacion.');
     return;
   }
@@ -159,7 +159,7 @@ export default function Crear_EditarPacientes({ navigation, route }) {
     if (isEditing) {
       const pacienteDataWithUserId = {
         ...formData,
-        user_id: user.id
+        usuario_id: usuario.id
       };
       response = await AuthService.editarPaciente(pacienteAEditar.id, pacienteDataWithUserId);
     } else {
@@ -188,8 +188,8 @@ export default function Crear_EditarPacientes({ navigation, route }) {
       
       switch (status) {
         case 403:
-          if (data.debug?.user_role && data.debug?.allowed_roles) {
-            errorMessage = `Error de permisos: Tu rol (${data.debug.user_role}) no tiene acceso a esta funcion.\nRoles permitidos: ${data.debug.allowed_roles.join(', ')}`;
+          if (data.debug?.usuario_role && data.debug?.allowed_roles) {
+            errorMessage = `Error de permisos: Tu rol (${data.debug.usuario_role}) no tiene acceso a esta funcion.\nRoles permitidos: ${data.debug.allowed_roles.join(', ')}`;
           } else {
             errorMessage = 'No tienes permisos para realizar esta accion';
           }
@@ -206,7 +206,7 @@ export default function Crear_EditarPacientes({ navigation, route }) {
           errorMessage = 'Ya existe un paciente con este numero de documento';
           break;
         case 500:
-          if (data.message && data.message.includes("user_id")) {
+          if (data.message && data.message.includes("usuario_id")) {
             errorMessage = 'Error interno del servidor. Por favor contacta al administrador.';
           } else {
             errorMessage = data.message || `Error del servidor (${status})`;
@@ -316,36 +316,6 @@ export default function Crear_EditarPacientes({ navigation, route }) {
         contentContainerStyle={styles.formContainer}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="person-circle-outline" size={20} color="#2196F3" />
-            <Text style={styles.sectionTitle}>Usuario que Crea el Paciente</Text>
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Usuario responsable</Text>
-            <View style={styles.userInfoContainer}>
-              {user ? (
-                <>
-                  <View style={styles.userInfo}>
-                    <Ionicons name="person" size={16} color="#2196F3" />
-                    <Text style={styles.userInfoText}>
-                      {user.name} ({user.email})
-                    </Text>
-                  </View>
-                  <View style={styles.roleChip}>
-                    <Text style={styles.roleText}>{user.role?.toUpperCase()}</Text>
-                  </View>
-                </>
-              ) : (
-                <View style={styles.loadingUserContainer}>
-                  <ActivityIndicator size="small" color="#2196F3" />
-                  <Text style={styles.loadingUserText}>Cargando usuario...</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -421,7 +391,7 @@ export default function Crear_EditarPacientes({ navigation, route }) {
           <TouchableOpacity
             style={[styles.saveButton, loading && styles.saveButtonDisabled]}
             onPress={handleSubmit}
-            disabled={loading || !user}
+            disabled={loading || !usuario}
           >
             {loading ? (
               <ActivityIndicator color="#FFF" size="small" />
@@ -552,19 +522,19 @@ const styles = StyleSheet.create({
     color: '#F44336',
     marginTop: 4,
   },
-  userInfoContainer: {
+  usuarioInfoContainer: {
     backgroundColor: '#F8F9FA',
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
-  userInfo: {
+  usuarioInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
   },
-  userInfoText: {
+  usuarioInfoText: {
     marginLeft: 8,
     fontSize: 14,
     color: '#333',

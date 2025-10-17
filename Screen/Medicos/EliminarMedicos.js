@@ -8,17 +8,17 @@ export default function EliminarMedicos({ route, navigation }) {
   const { medico } = route.params;
   const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
   const [cargando, setCargando] = useState(false);
-  const [user, setUser] = useState(null);
+  const [usuario, setUsuario] = useState(null);
 
   useEffect(() => {
-    loadUserData();
+    loadUsuarioData();
   }, []);
 
-  const loadUserData = async () => {
+  const loadUsuarioData = async () => {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
-        setUser(authData.user);
+        setUsuario(authData.usuario);
       }
     } catch (error) {
       console.error('Error al cargar usuario:', error);
@@ -31,7 +31,7 @@ export default function EliminarMedicos({ route, navigation }) {
       return;
     }
 
-    if (user?.role !== 'admin') {
+    if (usuario?.role !== 'admin') {
       Alert.alert('Error', 'Solo los administradores pueden eliminar médicos');
       return;
     }

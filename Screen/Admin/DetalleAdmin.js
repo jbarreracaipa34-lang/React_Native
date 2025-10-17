@@ -1,22 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AuthService from '../../Src/Services/AuthService';
 
-export default function DetalleMedicos({ route, navigation }) {
-  const { medico } = route.params;
+export default function DetalleAdmin({ route, navigation }) {
+  const { admin } = route.params;
   const [usuario, setUsuario] = useState(null);
-  const [medicoDetallado, setMedicoDetallado] = useState(medico);
-  const [especialidad, setEspecialidad] = useState(null);
+  const [adminDetallado, setAdminDetallado] = useState(admin);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    loadUserData();
+    loadUsuarioData();
     cargarDetallesCompletos();
   }, []);
 
-  const loadUserData = async () => {
+  const loadUsuarioData = async () => {
     try {
       const authData = await AuthService.isAuthenticated();
       if (authData.isAuthenticated) {
@@ -31,63 +30,95 @@ export default function DetalleMedicos({ route, navigation }) {
     try {
       setLoading(true);
       
-      const medicosResponse = await AuthService.getMedicos();
+      // Aquí podrías cargar información adicional del admin si es necesario
+      // Por ahora usamos los datos que ya tenemos
+      setAdminDetallado(admin);
       
-      if (medicosResponse?.data) {
-        const medicoActualizado = medicosResponse.data.find(m => m.id === medico.id);
-        if (medicoActualizado) {
-          setMedicoDetallado(medicoActualizado);
-          
-          if (medicoActualizado.especialidad_id) {
-            const especialidadesResponse = await AuthService.getEspecialidades();
-            if (especialidadesResponse?.data) {
-              const especialidadEncontrada = especialidadesResponse.data.find(
-                e => e.id === medicoActualizado.especialidad_id
-              );
-              setEspecialidad(especialidadEncontrada);
-            }
-          }
-        }
-      }
     } catch (error) {
-      console.error('Error cargando detalles:', error);
+      console.error('Error al cargar detalles:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditar = () => {
+    navigation.navigate('Crear_EditarAdmin', { admin: adminDetallado });
+  };
+
+  const handleEliminar = () => {
+    Alert.alert(
+      'Eliminar Administrador',
+      `¿Estás seguro de que quieres eliminar al administrador ${adminDetallado.nombre} ${adminDetallado.apellido}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => {
+            navigation.navigate('EliminarAdmin', { admin: adminDetallado });
+          }
+        }
+      ]
+    );
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'No disponible';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
 
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Detalle del Administrador</Text>
+        </View>
+        <View style={styles.placeholder} />
+      </View>
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.mainCard}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               <MaterialCommunityIcons 
-                name="doctor" 
+                name="account-cog" 
                 size={48} 
                 color="#2196F3" 
               />
             </View>
           </View>
           
-          <Text style={styles.medicoName}>
-            Dr. {medicoDetallado.nombre} {medicoDetallado.apellido}
+          <Text style={styles.adminName}>
+            {adminDetallado.nombre} {adminDetallado.apellido}
           </Text>
           
-          <View style={styles.medicoMetaInfo}>
+          <View style={styles.adminMetaInfo}>
             <View style={styles.metaItem}>
-              <Ionicons name="medical-outline" size={16} color="#666" />
+              <Ionicons name="shield-outline" size={16} color="#666" />
               <Text style={styles.metaText}>
-                {especialidad?.nombre || 'Especialidad no disponible'}
+                Administrador
               </Text>
             </View>
             <View style={styles.metaDivider} />
             <View style={styles.metaItem}>
-              <Ionicons name="document-text-outline" size={16} color="#666" />
+              <Ionicons name="mail-outline" size={16} color="#666" />
               <Text style={styles.metaText}>
-                NumLic {medicoDetallado.numeroLicencia || 'No disponible'}
+                {adminDetallado.email || 'No disponible'}
               </Text>
             </View>
           </View>
@@ -95,8 +126,8 @@ export default function DetalleMedicos({ route, navigation }) {
 
         <View style={styles.infoCard}>
           <View style={styles.cardHeader}>
-            <Ionicons name="briefcase" size={20} color="#2196F3" />
-            <Text style={styles.cardHeaderTitle}>Informacion Profesional</Text>
+            <Ionicons name="person" size={20} color="#2196F3" />
+            <Text style={styles.cardHeaderTitle}>Informacion Personal</Text>
           </View>
           
           <View style={styles.infoList}>
@@ -106,65 +137,7 @@ export default function DetalleMedicos({ route, navigation }) {
                 <Text style={styles.infoLabelText}>Nombre Completo</Text>
               </View>
               <Text style={styles.infoValue}>
-                Dr. {medicoDetallado.nombre} {medicoDetallado.apellido}
-              </Text>
-            </View>
-
-            <View style={styles.infoDivider} />
-
-            <View style={styles.infoItem}>
-              <View style={styles.infoLabel}>
-                <Ionicons name="document-text-outline" size={18} color="#666" />
-                <Text style={styles.infoLabelText}>Numero de Licencia</Text>
-              </View>
-              <Text style={styles.infoValue}>
-                {medicoDetallado.numeroLicencia || 'No disponible'}
-              </Text>
-            </View>
-
-            <View style={styles.infoDivider} />
-
-            <View style={styles.infoItem}>
-              <View style={styles.infoLabel}>
-                <MaterialCommunityIcons name="stethoscope" size={18} color="#666" />
-                <Text style={styles.infoLabelText}>Especialidad</Text>
-              </View>
-              <Text style={styles.infoValue}>
-                {especialidad?.nombre || 'No disponible'}
-              </Text>
-            </View>
-
-            {especialidad?.descripcion && (
-              <>
-                <View style={styles.infoDivider} />
-                <View style={styles.infoItem}>
-                  <View style={styles.infoLabel}>
-                    <Ionicons name="information-circle-outline" size={18} color="#666" />
-                    <Text style={styles.infoLabelText}>Descripcion</Text>
-                  </View>
-                  <Text style={styles.infoValue}>
-                    {especialidad.descripcion}
-                  </Text>
-                </View>
-              </>
-            )}
-          </View>
-        </View>
-
-        <View style={styles.infoCard}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="call" size={20} color="#2196F3" />
-            <Text style={styles.cardHeaderTitle}>Informacion de Contacto</Text>
-          </View>
-          
-          <View style={styles.infoList}>
-            <View style={styles.infoItem}>
-              <View style={styles.infoLabel}>
-                <Ionicons name="call-outline" size={18} color="#666" />
-                <Text style={styles.infoLabelText}>Telefono</Text>
-              </View>
-              <Text style={styles.infoValue}>
-                {medicoDetallado.telefono || 'No disponible'}
+                {adminDetallado.nombre} {adminDetallado.apellido}
               </Text>
             </View>
 
@@ -175,8 +148,44 @@ export default function DetalleMedicos({ route, navigation }) {
                 <Ionicons name="mail-outline" size={18} color="#666" />
                 <Text style={styles.infoLabelText}>Email</Text>
               </View>
-              <Text style={styles.infoValue} numberOfLines={1}>
-                {medicoDetallado.email || 'No disponible'}
+              <Text style={styles.infoValue}>
+                {adminDetallado.email || 'No disponible'}
+              </Text>
+            </View>
+
+            <View style={styles.infoDivider} />
+
+            <View style={styles.infoItem}>
+              <View style={styles.infoLabel}>
+                <Ionicons name="shield-outline" size={18} color="#666" />
+                <Text style={styles.infoLabelText}>Rol</Text>
+              </View>
+              <Text style={styles.infoValue}>
+                Administrador
+              </Text>
+            </View>
+
+            <View style={styles.infoDivider} />
+
+            <View style={styles.infoItem}>
+              <View style={styles.infoLabel}>
+                <Ionicons name="calendar-outline" size={18} color="#666" />
+                <Text style={styles.infoLabelText}>Fecha de Registro</Text>
+              </View>
+              <Text style={styles.infoValue}>
+                {formatDate(adminDetallado.created_at)}
+              </Text>
+            </View>
+
+            <View style={styles.infoDivider} />
+
+            <View style={styles.infoItem}>
+              <View style={styles.infoLabel}>
+                <Ionicons name="time-outline" size={18} color="#666" />
+                <Text style={styles.infoLabelText}>Última Actualización</Text>
+              </View>
+              <Text style={styles.infoValue}>
+                {formatDate(adminDetallado.updated_at)}
               </Text>
             </View>
           </View>
@@ -192,6 +201,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
+  },
+  header: {
+    backgroundColor: '#FFF',
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  backButton: {
+    marginRight: 16,
+  },
+  headerCenter: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+  },
+  placeholder: {
+    width: 40,
   },
   content: {
     flex: 1,
@@ -214,14 +250,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  medicoName: {
+  adminName: {
     fontSize: 24,
     fontWeight: '700',
     color: '#333',
     marginBottom: 8,
     textAlign: 'center',
   },
-  medicoMetaInfo: {
+  adminMetaInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
@@ -288,3 +324,4 @@ const styles = StyleSheet.create({
     height: 20,
   },
 });
+
