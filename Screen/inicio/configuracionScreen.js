@@ -8,30 +8,26 @@ export default function Configuracion() {
   const [permisoNotificaciones, setPermisoNotificaciones] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  //  Verificar permisos y preferencias guardadas
   const checkPermisos = async () => {
-    const { status } = await Notifications.getPermissionsAsync(); // ← corregido: es getPermissionsAsync()
+    const { status } = await Notifications.getPermissionsAsync();
     const preferencia = await AsyncStorage.getItem('notificaciones_activas');
     setPermisoNotificaciones(status === 'granted' && preferencia === 'true');
     setLoading(false);
   };
 
-  //  Cargar al iniciar
   useEffect(() => {
     checkPermisos();
   }, []);
 
-  //  Cargar al volver a enfocar la pantalla
   useFocusEffect(
     React.useCallback(() => {
       checkPermisos();
     }, [])
   );
 
-  //  Cambiar estado del switch y guardar preferencia
   const toggleSwitch = async (valor) => {
     if (valor) {
-      const { status } = await Notifications.requestPermissionsAsync(); // solicitar permiso si no está dado
+      const { status } = await Notifications.requestPermissionsAsync();
       if (status === 'granted') {
         await AsyncStorage.setItem('notificaciones_activas', 'true');
         setPermisoNotificaciones(true);
@@ -45,7 +41,6 @@ export default function Configuracion() {
     }
   };
 
-  //  Ejemplo de programación de notificación
   const programarNotificacion = async () => {
     const { status } = await Notifications.getPermissionsAsync();
     const preferencia = await AsyncStorage.getItem('notificaciones_activas');
@@ -66,7 +61,6 @@ export default function Configuracion() {
     Alert.alert('Notificación programada en 5 segundos');
   };
 
-  //  Interfaz básica
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <Text>Notificaciones: {permisoNotificaciones ? 'Activadas' : 'Desactivadas'}</Text>

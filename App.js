@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-// import * as Notifications from 'expo-notifications'; // Comentado temporalmente para Expo Go
 import { navigationRef } from './Src/Services/NavegationService';
 import InicioStack from './Screen/inicio/inicio';
 import CitasStack from './Src/Navegation/Stack/CitasStack';

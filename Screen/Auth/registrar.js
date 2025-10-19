@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView} from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Modal} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 import AuthService from '../../Src/Services/AuthService'; 
 
 export default function Registrar({ navigation }) {
@@ -23,12 +22,31 @@ export default function Registrar({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showTipoDocModal, setShowTipoDocModal] = useState(false);
+  const [showGeneroModal, setShowGeneroModal] = useState(false);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+  };
+
+  const getTipoDocText = () => {
+    switch(formData.tipoDocumento) {
+      case 'CC': return 'Cédula de Ciudadanía';
+      case 'TI': return 'Tarjeta de Identidad';
+      case 'CE': return 'Cédula de Extranjería';
+      default: return 'Seleccionar tipo de documento';
+    }
+  };
+
+  const getGeneroText = () => {
+    switch(formData.genero) {
+      case 'M': return 'Masculino';
+      case 'F': return 'Femenino';
+      default: return 'Seleccionar género';
+    }
   };
 
   const validateForm = () => {
@@ -108,166 +126,191 @@ export default function Registrar({ navigation }) {
 
         <View style={styles.formContainer}>
           
-          <View style={styles.inputContainer}>
-            <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Nombre"
-              value={formData.nombre}
-              onChangeText={(value) => handleInputChange('nombre', value)}
-              autoCapitalize="words"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Apellido"
-              value={formData.apellido}
-              onChangeText={(value) => handleInputChange('apellido', value)}
-              autoCapitalize="words"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Ionicons name="card-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={formData.tipoDocumento}
-                style={styles.picker}
-                onValueChange={(value) => handleInputChange('tipoDocumento', value)}
-              >
-                <Picker.Item label="Cédula de Ciudadanía" value="CC" />
-                <Picker.Item label="Tarjeta de Identidad" value="TI" />
-                <Picker.Item label="Cédula de Extranjería" value="CE" />
-              </Picker>
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Nombre</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Ingresa tu nombre"
+                value={formData.nombre}
+                onChangeText={(value) => handleInputChange('nombre', value)}
+                autoCapitalize="words"
+              />
             </View>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="card-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Número de documento"
-              value={formData.numeroDocumento}
-              onChangeText={(value) => handleInputChange('numeroDocumento', value)}
-              keyboardType="numeric"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Ionicons name="calendar-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Fecha de nacimiento (YYYY-MM-DD)"
-              value={formData.fechaNacimiento}
-              onChangeText={(value) => handleInputChange('fechaNacimiento', value)}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Ionicons name="people-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={formData.genero}
-                style={styles.picker}
-                onValueChange={(value) => handleInputChange('genero', value)}
-              >
-                <Picker.Item label="Masculino" value="M" />
-                <Picker.Item label="Femenino" value="F" />
-              </Picker>
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Apellido</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Ingresa tu apellido"
+                value={formData.apellido}
+                onChangeText={(value) => handleInputChange('apellido', value)}
+                autoCapitalize="words"
+              />
             </View>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="call-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Teléfono"
-              value={formData.telefono}
-              onChangeText={(value) => handleInputChange('telefono', value)}
-              keyboardType="phone-pad"
-            />
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Tipo de Documento</Text>
+            <TouchableOpacity 
+              style={styles.inputContainer}
+              onPress={() => setShowTipoDocModal(true)}
+            >
+              <Ionicons name="card-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <Text style={styles.pickerText}>{getTipoDocText()}</Text>
+              <Ionicons name="chevron-down" size={20} color="#6B7280" />
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Correo electronico"
-              value={formData.email}
-              onChangeText={(value) => handleInputChange('email', value)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-            />
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Número de Documento</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="card-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Ingresa tu número de documento"
+                value={formData.numeroDocumento}
+                onChangeText={(value) => handleInputChange('numeroDocumento', value)}
+                keyboardType="numeric"
+              />
+            </View>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="location-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Dirección"
-              value={formData.direccion}
-              onChangeText={(value) => handleInputChange('direccion', value)}
-              autoCapitalize="words"
-            />
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Fecha de Nacimiento</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="calendar-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="YYYY-MM-DD"
+                value={formData.fechaNacimiento}
+                onChangeText={(value) => handleInputChange('fechaNacimiento', value)}
+              />
+            </View>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="medical-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="EPS"
-              value={formData.eps}
-              onChangeText={(value) => handleInputChange('eps', value)}
-              autoCapitalize="words"
-            />
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Género</Text>
+            <TouchableOpacity 
+              style={styles.inputContainer}
+              onPress={() => setShowGeneroModal(true)}
+            >
+              <Ionicons name="people-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <Text style={styles.pickerText}>{getGeneroText()}</Text>
+              <Ionicons name="chevron-down" size={20} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Teléfono</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="call-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Ingresa tu teléfono"
+                value={formData.telefono}
+                onChangeText={(value) => handleInputChange('telefono', value)}
+                keyboardType="phone-pad"
+              />
+            </View>
+          </View>
+
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Correo Electrónico</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Ingresa tu correo"
+                value={formData.email}
+                onChangeText={(value) => handleInputChange('email', value)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
+            </View>
+          </View>
+
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Dirección</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="location-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Ingresa tu dirección"
+                value={formData.direccion}
+                onChangeText={(value) => handleInputChange('direccion', value)}
+                autoCapitalize="words"
+              />
+            </View>
+          </View>
+
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>EPS</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="medical-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Ingresa tu EPS"
+                value={formData.eps}
+                onChangeText={(value) => handleInputChange('eps', value)}
+                autoCapitalize="words"
+              />
+            </View>
           </View>  
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Contraseña"
-              value={formData.password}
-              onChangeText={(value) => handleInputChange('password', value)}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-            />
-            <TouchableOpacity 
-              onPress={() => setShowPassword(!showPassword)}
-              style={styles.eyeIcon}
-            >
-              <Ionicons 
-                name={showPassword ? "eye-outline" : "eye-off-outline"} 
-                size={20} 
-                color="#6B7280" 
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Contraseña</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Ingresa tu contraseña"
+                value={formData.password}
+                onChangeText={(value) => handleInputChange('password', value)}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
               />
-            </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeIcon}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-outline" : "eye-off-outline"} 
+                  size={20} 
+                  color="#6B7280" 
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Confirmar contraseña"
-              value={formData.password_confirmation}
-              onChangeText={(value) => handleInputChange('password_confirmation', value)}
-              secureTextEntry={!showConfirmPassword}
-              autoCapitalize="none"
-            />
-            <TouchableOpacity 
-              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-              style={styles.eyeIcon}
-            >
-              <Ionicons 
-                name={showConfirmPassword ? "eye-outline" : "eye-off-outline"} 
-                size={20} 
-                color="#6B7280" 
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Confirmar Contraseña</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Confirma tu contraseña"
+                value={formData.password_confirmation}
+                onChangeText={(value) => handleInputChange('password_confirmation', value)}
+                secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
               />
-            </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={styles.eyeIcon}
+              >
+                <Ionicons 
+                  name={showConfirmPassword ? "eye-outline" : "eye-off-outline"} 
+                  size={20} 
+                  color="#6B7280" 
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity 
@@ -298,6 +341,111 @@ export default function Registrar({ navigation }) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <Modal
+        visible={showTipoDocModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowTipoDocModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Seleccionar Tipo de Documento</Text>
+            
+            <TouchableOpacity 
+              style={[styles.modalOption, formData.tipoDocumento === 'CC' && styles.modalOptionSelected]}
+              onPress={() => {
+                handleInputChange('tipoDocumento', 'CC');
+                setShowTipoDocModal(false);
+              }}
+            >
+              <Ionicons name="card-outline" size={24} color={formData.tipoDocumento === 'CC' ? '#1E88E5' : '#6B7280'} />
+              <Text style={[styles.modalOptionText, formData.tipoDocumento === 'CC' && styles.modalOptionTextSelected]}>
+                Cédula de Ciudadanía
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.modalOption, formData.tipoDocumento === 'TI' && styles.modalOptionSelected]}
+              onPress={() => {
+                handleInputChange('tipoDocumento', 'TI');
+                setShowTipoDocModal(false);
+              }}
+            >
+              <Ionicons name="card-outline" size={24} color={formData.tipoDocumento === 'TI' ? '#1E88E5' : '#6B7280'} />
+              <Text style={[styles.modalOptionText, formData.tipoDocumento === 'TI' && styles.modalOptionTextSelected]}>
+                Tarjeta de Identidad
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.modalOption, formData.tipoDocumento === 'CE' && styles.modalOptionSelected]}
+              onPress={() => {
+                handleInputChange('tipoDocumento', 'CE');
+                setShowTipoDocModal(false);
+              }}
+            >
+              <Ionicons name="card-outline" size={24} color={formData.tipoDocumento === 'CE' ? '#1E88E5' : '#6B7280'} />
+              <Text style={[styles.modalOptionText, formData.tipoDocumento === 'CE' && styles.modalOptionTextSelected]}>
+                Cédula de Extranjería
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.modalCancelButton}
+              onPress={() => setShowTipoDocModal(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showGeneroModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowGeneroModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Seleccionar Género</Text>
+            
+            <TouchableOpacity 
+              style={[styles.modalOption, formData.genero === 'M' && styles.modalOptionSelected]}
+              onPress={() => {
+                handleInputChange('genero', 'M');
+                setShowGeneroModal(false);
+              }}
+            >
+              <Ionicons name="male-outline" size={24} color={formData.genero === 'M' ? '#1E88E5' : '#6B7280'} />
+              <Text style={[styles.modalOptionText, formData.genero === 'M' && styles.modalOptionTextSelected]}>
+                Masculino
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.modalOption, formData.genero === 'F' && styles.modalOptionSelected]}
+              onPress={() => {
+                handleInputChange('genero', 'F');
+                setShowGeneroModal(false);
+              }}
+            >
+              <Ionicons name="female-outline" size={24} color={formData.genero === 'F' ? '#1E88E5' : '#6B7280'} />
+              <Text style={[styles.modalOptionText, formData.genero === 'F' && styles.modalOptionTextSelected]}>
+                Femenino
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.modalCancelButton}
+              onPress={() => setShowGeneroModal(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -361,13 +509,22 @@ const styles = StyleSheet.create({
   formContainer: {
     width: '100%',
   },
+  fieldContainer: {
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+    marginLeft: 4,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 16,
-    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     shadowOffset: { width: 0, height: 1 },
@@ -383,13 +540,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1A1A1A',
     paddingVertical: 16,
-  },
-  pickerContainer: {
-    flex: 1,
-  },
-  picker: {
-    flex: 1,
-    height: 50,
+    placeholderTextColor: '#9CA3AF',
   },
   eyeIcon: {
     padding: 4,
@@ -436,5 +587,71 @@ const styles = StyleSheet.create({
     color: '#1E88E5',
     fontSize: 16,
     fontWeight: '600',
+  },
+  pickerText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1A1A1A',
+    paddingVertical: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '80%',
+    maxWidth: 400,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#F9FAFB',
+  },
+  modalOptionSelected: {
+    backgroundColor: '#EBF4FF',
+    borderWidth: 1,
+    borderColor: '#1E88E5',
+  },
+  modalOptionText: {
+    fontSize: 16,
+    color: '#374151',
+    marginLeft: 12,
+    flex: 1,
+  },
+  modalOptionTextSelected: {
+    color: '#1E88E5',
+    fontWeight: '600',
+  },
+  modalCancelButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  modalCancelText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
   },
 });

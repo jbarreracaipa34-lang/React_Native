@@ -36,7 +36,6 @@ export default function EliminarAdmin({ route, navigation }) {
       return;
     }
 
-    // Verificar que no se esté eliminando a sí mismo
     if (usuario?.id === admin.id) {
       Alert.alert('Error', 'No puedes eliminar tu propia cuenta');
       return;

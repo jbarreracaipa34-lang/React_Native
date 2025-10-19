@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Alert } from 'react-native';
 import NavigationService from './NavegationService';
 
-const API_BASE_URL = 'http://192.168.1.6:8000/api';
+const API_BASE_URL = 'https://avianna-surfy-mikaela.ngrok-free.dev/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -11,7 +11,7 @@ const api = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  timeout: 15000,
+  timeout: 30000,
 });
 
 api.interceptors.request.use(
@@ -87,6 +87,8 @@ class AuthService {
 
   async login(credentials) {
     try {
+      console.log('Intentando login con:', credentials);
+      console.log('URL base:', API_BASE_URL);
       
       const loginApi = axios.create({
         baseURL: API_BASE_URL,
@@ -97,6 +99,7 @@ class AuthService {
         timeout: 30000,
       });
       
+      console.log('📡 Enviando petición a:', API_BASE_URL + '/login');
       const response = await loginApi.post('/login', credentials);
       
       const token = response.data?.token;
@@ -112,6 +115,10 @@ class AuthService {
         return { success: false, message: 'Token o usuario faltante en la respuesta' };
       }
     } catch (error) {
+      console.error('❌ Error en login:', error);
+      console.error('❌ Error response:', error.response);
+      console.error('❌ Error status:', error.response?.status);
+      console.error('❌ Error data:', error.response?.data);
       
       return {
         success: false,

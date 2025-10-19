@@ -104,8 +104,8 @@ export default function Crear_EditarMedicos({ navigation, route }) {
         telefono: medicoAEditar.telefono || '',
         email: medicoAEditar.email || '',
         especialidad_id: medicoAEditar.especialidad_id || '',
-        password: '', // Solo para nuevos médicos
-        password_confirmation: '' // Solo para nuevos médicos
+        password: '',
+        password_confirmation: ''
       });
     }
   };
@@ -153,7 +153,6 @@ export default function Crear_EditarMedicos({ navigation, route }) {
       newErrors.especialidad_id = 'La especialidad es obligatoria';
     }
 
-    // Validación de contraseña solo para nuevos médicos
     if (!isEditing) {
       if (!formData.password.trim()) {
         newErrors.password = 'La contraseña es obligatoria';
@@ -219,7 +218,6 @@ export default function Crear_EditarMedicos({ navigation, route }) {
         especialidad_id: formData.especialidad_id || null
       };
 
-      // Agregar campos de contraseña solo para nuevos médicos
       if (!isEditing) {
         medicoData.password = formData.password;
         medicoData.password_confirmation = formData.password_confirmation;
@@ -447,7 +445,6 @@ export default function Crear_EditarMedicos({ navigation, route }) {
 
           {renderEspecialidadesPicker()}
           
-          {/* Campos de contraseña solo para nuevos médicos */}
           {!isEditing && (
             <>
               {renderInput('Contraseña', 'password', 'Ingrese la contraseña', 'default', false, null, true)}

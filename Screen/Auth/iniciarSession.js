@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView} from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Modal} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -11,6 +11,7 @@ export default function IniciarSession({ navigation }) {
   const [tipoUsuario, setTipoUsuario] = useState('paciente');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -80,54 +81,63 @@ export default function IniciarSession({ navigation }) {
         <Text style={styles.subtitle}>Ingresa tus credenciales para acceder</Text>
 
         <View style={styles.formContainer}>
-          <View style={styles.inputContainer}>
-            <Ionicons name="people-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={tipoUsuario}
-                style={styles.picker}
-                onValueChange={setTipoUsuario}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Tipo de Usuario</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="people-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <TouchableOpacity 
+                style={styles.pickerButton}
+                onPress={() => setShowModal(true)}
               >
-                <Picker.Item label="Paciente" value="paciente" />
-                <Picker.Item label="Médico" value="medico" />
-                <Picker.Item label="Administrador" value="admin" />
-              </Picker>
+                <Text style={styles.pickerText}>
+                  {tipoUsuario === 'paciente' ? 'Paciente' : 
+                   tipoUsuario === 'medico' ? 'Médico' : 
+                   tipoUsuario === 'admin' ? 'Administrador' : 'Seleccionar...'}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color="#6B7280" />
+              </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Correo electronico"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-            />
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Correo Electrónico</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Ingresa tu correo"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
+            </View>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Contraseña"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-            />
-            <TouchableOpacity 
-              onPress={() => setShowPassword(!showPassword)}
-              style={styles.eyeIcon}
-            >
-              <Ionicons 
-                name={showPassword ? "eye-outline" : "eye-off-outline"} 
-                size={20} 
-                color="#6B7280" 
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Contraseña</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Ingresa tu contraseña"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
               />
-            </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeIcon}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-outline" : "eye-off-outline"} 
+                  size={20} 
+                  color="#6B7280" 
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity 
@@ -156,6 +166,65 @@ export default function IniciarSession({ navigation }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Seleccionar Tipo de Usuario</Text>
+            
+            <TouchableOpacity 
+              style={[styles.modalOption, tipoUsuario === 'paciente' && styles.modalOptionSelected]}
+              onPress={() => {
+                setTipoUsuario('paciente');
+                setShowModal(false);
+              }}
+            >
+              <Ionicons name="person-outline" size={24} color="#1E88E5" />
+              <Text style={[styles.modalOptionText, tipoUsuario === 'paciente' && styles.modalOptionTextSelected]}>
+                Paciente
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.modalOption, tipoUsuario === 'medico' && styles.modalOptionSelected]}
+              onPress={() => {
+                setTipoUsuario('medico');
+                setShowModal(false);
+              }}
+            >
+              <Ionicons name="medical-outline" size={24} color="#1E88E5" />
+              <Text style={[styles.modalOptionText, tipoUsuario === 'medico' && styles.modalOptionTextSelected]}>
+                Médico
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.modalOption, tipoUsuario === 'admin' && styles.modalOptionSelected]}
+              onPress={() => {
+                setTipoUsuario('admin');
+                setShowModal(false);
+              }}
+            >
+              <Ionicons name="shield-outline" size={24} color="#1E88E5" />
+              <Text style={[styles.modalOptionText, tipoUsuario === 'admin' && styles.modalOptionTextSelected]}>
+                Administrador
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.modalCancelButton}
+              onPress={() => setShowModal(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -219,13 +288,22 @@ const styles = StyleSheet.create({
   formContainer: {
     width: '100%',
   },
+  fieldContainer: {
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+    marginLeft: 4,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 16,
-    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     shadowOffset: { width: 0, height: 1 },
@@ -241,13 +319,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1A1A1A',
     paddingVertical: 16,
+    placeholderTextColor: '#9CA3AF',
   },
-  pickerContainer: {
+  pickerButton: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
   },
-  picker: {
+  pickerText: {
+    fontSize: 16,
+    color: '#1A1A1A',
     flex: 1,
-    height: 50,
   },
   eyeIcon: {
     padding: 4,
@@ -314,5 +398,65 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
     marginBottom: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '80%',
+    maxWidth: 300,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#F9FAFB',
+  },
+  modalOptionSelected: {
+    backgroundColor: '#E3F2FD',
+    borderWidth: 2,
+    borderColor: '#1E88E5',
+  },
+  modalOptionText: {
+    fontSize: 16,
+    color: '#374151',
+    marginLeft: 12,
+    fontWeight: '500',
+  },
+  modalOptionTextSelected: {
+    color: '#1E88E5',
+    fontWeight: '600',
+  },
+  modalCancelButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  modalCancelText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
   },
 });

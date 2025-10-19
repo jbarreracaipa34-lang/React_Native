@@ -99,7 +99,7 @@ export default function Crear_EditarAdmin({ navigation, route }) {
       let result;
       
       if (isEditing) {
-        // Actualizar admin existente
+
         const updateData = {
           nombre: formData.nombre,
           apellido: formData.apellido,

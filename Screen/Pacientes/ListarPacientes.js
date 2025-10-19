@@ -89,7 +89,6 @@ export default function ListarPacientes({ navigation }) {
         const pacientesResult = await AuthService.getPacientesConCitas();
         
         if (pacientesResult && pacientesResult.data && Array.isArray(pacientesResult.data)) {
-          // Filtrar solo los pacientes que tienen citas con este médico
           const citasFiltradas = pacientesResult.data.filter(item => 
             item.medicos_id === loggedUser.id
           );

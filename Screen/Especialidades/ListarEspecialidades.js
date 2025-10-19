@@ -161,7 +161,7 @@ export default function ListarEspecialidades({ navigation, route }) {
           id: especialidad.id,
           nombre: especialidad.nombre,
           descripcion: especialidad.descripcion || 'Sin descripcion',
-          totalMedicos: 1, // Solo este médico
+          totalMedicos: 1,
           totalCitas: 0,
           citasActivas: 0
         }));

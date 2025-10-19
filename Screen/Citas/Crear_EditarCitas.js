@@ -569,7 +569,7 @@ export default function Crear_EditarCita({ navigation, route }) {
 
   const isFieldDisabled = (field) => {
     if (!isEditing && usuario?.role === 'paciente' && field === 'pacientes_id') return true;
-    if (!isEditing && usuario?.role === 'paciente' && field === 'estado') return true; // Estado solo lectura para pacientes al crear
+    if (!isEditing && usuario?.role === 'paciente' && field === 'estado') return true;
     if (!isEditing && usuario?.role === 'medico' && field === 'medicos_id') return true;
     if (isEditing && usuario?.role === 'medico') return field !== 'observaciones' && field !== 'estado';
     if (isEditing && usuario?.role === 'paciente') {

@@ -30,8 +30,6 @@ export default function DetalleAdmin({ route, navigation }) {
     try {
       setLoading(true);
       
-      // Aquí podrías cargar información adicional del admin si es necesario
-      // Por ahora usamos los datos que ya tenemos
       setAdminDetallado(admin);
       
     } catch (error) {
