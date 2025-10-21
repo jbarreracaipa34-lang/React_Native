@@ -387,7 +387,6 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
       }
 
       if (response && response.success) {
-        // Enviar notificación solo para horarios nuevos (no para ediciones)
         if (!isEditing) {
           const medicoSeleccionado = medicos.find(m => m.id === parseInt(formData.medicos_id));
           if (medicoSeleccionado) {
@@ -400,7 +399,6 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
               horaFin: formData.horaFin
             };
             
-            console.log('📅 Enviando notificación de horario creado...');
             await notifyScheduleCreated(scheduleData);
           }
         }

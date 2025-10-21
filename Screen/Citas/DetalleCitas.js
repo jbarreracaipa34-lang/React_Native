@@ -81,7 +81,6 @@ export default function DetalleCitas({ route, navigation }) {
     if (dateString.includes('T')) {
       date = new Date(dateString);
     } else {
-      // Para fechas sin hora, agregar T00:00:00 para evitar problemas de zona horaria
       date = new Date(dateString + 'T00:00:00');
     }
     

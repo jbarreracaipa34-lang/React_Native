@@ -165,17 +165,14 @@ export default function Crear_EditarPacientes({ navigation, route }) {
         usuario_id: usuario.id
       };
     } else {
-      // Para crear paciente, excluir password_confirmation del envío
       const { password_confirmation, ...dataToSend } = formData;
       pacienteData = {
         ...dataToSend,
-        // Asegurar que los campos opcionales tengan valores por defecto
         email: dataToSend.email || '',
         direccion: dataToSend.direccion || ''
       };
     }
 
-    console.log('📝 Datos del paciente a enviar:', pacienteData);
 
     let response;
     if (isEditing) {
@@ -184,11 +181,9 @@ export default function Crear_EditarPacientes({ navigation, route }) {
       response = await AuthService.crearPaciente(pacienteData);
     }
 
-    console.log('📥 Respuesta del servidor:', response);
 
     if (response && response.success) {
       if (!isEditing && permissionsGranted) {
-        // Usar los datos del formulario para la notificación si no hay datos en la respuesta
         const patientData = response.data || {
           id: 'nuevo',
           nombre: formData.nombre,
@@ -212,14 +207,6 @@ export default function Crear_EditarPacientes({ navigation, route }) {
     }
   } catch (error) {
     console.error('❌ Error completo al guardar paciente:', error);
-    console.log('📊 Detalles del error:', {
-      message: error.message,
-      response: error.response ? {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data
-      } : 'No hay respuesta'
-    });
     
     let errorMessage = 'Error desconocido al guardar el paciente';
     
@@ -236,11 +223,9 @@ export default function Crear_EditarPacientes({ navigation, route }) {
           break;
         case 422:
           if (data.errors) {
-            // Mostrar el primer error de validación
             const firstError = Object.values(data.errors)[0];
             let specificError = Array.isArray(firstError) ? firstError[0] : firstError;
             
-            // Mensajes más específicos para errores comunes
             if (specificError.includes('email') && specificError.includes('unique')) {
               errorMessage = 'Ya existe un paciente con este email';
             } else if (specificError.includes('numeroDocumento') && specificError.includes('unique')) {

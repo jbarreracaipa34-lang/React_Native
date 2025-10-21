@@ -151,14 +151,12 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
       }
 
       if (response && (response.data || response.success)) {
-        // Enviar notificación solo para especialidades nuevas (no para ediciones)
         if (!isEditing) {
           const specialtyData = {
             id: response.data?.id || 'nuevo',
             nombre: formData.nombre.trim()
           };
           
-          console.log('🏥 Enviando notificación de especialidad creada...');
           await notifySpecialtyCreated(specialtyData);
         }
         

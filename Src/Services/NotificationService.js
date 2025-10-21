@@ -40,18 +40,15 @@ export const NotificationProvider = ({ children }) => {
 
   const initializeNotifications = async () => {
     try {
-      console.log('🔔 Inicializando notificaciones locales...');
       
       const { status } = await Notifications.requestPermissionsAsync();
       
       if (status !== 'granted') {
-        console.log('❌ Permisos de notificación denegados');
         setPermissionsGranted(false);
         setIsInitialized(true);
         return;
       }
 
-      console.log('✅ Permisos de notificación concedidos');
 
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('default', {
@@ -61,12 +58,10 @@ export const NotificationProvider = ({ children }) => {
           lightColor: '#FF231F7C',
           description: 'Notificaciones para citas médicas y administración',
         });
-        console.log('📱 Canal de notificación Android configurado');
       }
 
       setPermissionsGranted(true);
       setIsInitialized(true);
-      console.log('🎯 Sistema de notificaciones locales inicializado correctamente');
     } catch (error) {
       console.error('❌ Error inicializando notificaciones:', error);
       setPermissionsGranted(false);
@@ -99,7 +94,6 @@ export const NotificationProvider = ({ children }) => {
     });
 
     const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Respuesta a notificación:', response);
       handleNotificationResponse(response);
     });
 
@@ -118,20 +112,15 @@ export const NotificationProvider = ({ children }) => {
       case 'appointment_created':
       case 'appointment_updated':
       case 'appointment_cancelled':
-        console.log('Navegando a cita:', appointmentId);
         break;
       case 'user_created':
       case 'user_deleted':
-        console.log('Navegando a usuarios:', userId);
         break;
       case 'schedule_created':
-        console.log('Navegando a horarios:', scheduleId);
         break;
       case 'specialty_created':
-        console.log('Navegando a especialidades:', specialtyId);
         break;
       default:
-        console.log('Tipo de notificación no manejado:', type);
     }
   };
 
@@ -187,12 +176,10 @@ export const NotificationProvider = ({ children }) => {
 
   const notifyAppointmentCreated = async (appointmentData) => {
     if (!permissionsGranted || !settings.appointmentUpdates) {
-      console.log('⚠️ Notificación de cita creada omitida - permisos:', permissionsGranted, 'configuración:', settings.appointmentUpdates);
       return false;
     }
     
     try {
-      console.log('📅 Enviando notificación de cita creada...');
       const { medico_nombre, medico_apellido, fechaCita, horaCita } = appointmentData;
       
       await Notifications.scheduleNotificationAsync({
@@ -205,10 +192,9 @@ export const NotificationProvider = ({ children }) => {
           },
           sound: 'default',
         },
-        trigger: null, // Inmediata
+        trigger: null,
       });
 
-      console.log('✅ Notificación de cita creada enviada exitosamente');
       return true;
     } catch (error) {
       console.error('❌ Error notificando creación de cita:', error);
@@ -370,15 +356,12 @@ export const NotificationProvider = ({ children }) => {
     await saveSettings(newSettings);
   };
 
-  // Función de prueba para verificar que las notificaciones locales funcionen
   const testLocalNotification = async () => {
     if (!permissionsGranted) {
-      console.log('❌ No se puede probar - permisos no concedidos');
       return false;
     }
     
     try {
-      console.log('🧪 Probando notificación local...');
       await Notifications.scheduleNotificationAsync({
         content: {
           title: '🧪 Prueba de Notificación Local',
@@ -386,10 +369,9 @@ export const NotificationProvider = ({ children }) => {
           data: { type: 'test' },
           sound: 'default',
         },
-        trigger: null, // Inmediata
+        trigger: null, 
       });
       
-      console.log('✅ Notificación de prueba enviada exitosamente');
       return true;
     } catch (error) {
       console.error('❌ Error en notificación de prueba:', error);

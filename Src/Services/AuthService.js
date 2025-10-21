@@ -392,7 +392,6 @@ class AuthService {
 
   async updateHorarioFallback(id, data) {
     try {
-      // Método simple: eliminar y crear
       await api.delete(`/horarios/${id}`);
       const response = await api.post('/horarios', data);
       return { success: true, data: response.data };
