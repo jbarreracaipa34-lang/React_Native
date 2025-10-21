@@ -9,7 +9,7 @@ export default function DetalleEspecialidades({ route, navigation }) {
   const [usuario, setUsuario] = useState(null);
   const [especialidadDetallada, setEspecialidadDetallada] = useState(especialidad);
   const [medicosCount, setMedicosCount] = useState(0);
-  const [loading, setLoading] = useState(false);
+(false);
 
   useEffect(() => {
     loadUsuarioData();
@@ -29,7 +29,6 @@ export default function DetalleEspecialidades({ route, navigation }) {
 
   const cargarDetallesCompletos = async () => {
     try {
-      setLoading(true);
       
       const medicosResponse = await AuthService.getMedicos();
       if (medicosResponse?.data) {
@@ -42,7 +41,6 @@ export default function DetalleEspecialidades({ route, navigation }) {
     } catch (error) {
       console.error('Error cargando detalles:', error);
     } finally {
-      setLoading(false);
     }
   };
 

@@ -3,7 +3,8 @@ import axios from 'axios';
 import { Alert } from 'react-native';
 import NavigationService from './NavegationService';
 
-const API_BASE_URL = 'https://avianna-surfy-mikaela.ngrok-free.dev/api';
+//const API_BASE_URL = 'https://avianna-surfy-mikaela.ngrok-free.dev/api';
+const API_BASE_URL = 'http://192.168.1.6:8000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -37,7 +38,6 @@ api.interceptors.response.use(
         
         const currentToken = await AsyncStorage.getItem('authToken');
         if (currentToken) {
-          console.log('Limpiando storage debido a token inválido');
           await AsyncStorage.removeItem('authToken');
           await AsyncStorage.removeItem('authData');
           
@@ -83,12 +83,22 @@ class AuthService {
     }
   }
 
-  async registerMedico(medicoData) { return api.post('/registrar-medico', medicoData); }
+  async registerMedico(medicoData) {
+    try {
+      const response = await api.post('/registrar-medico', medicoData);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error creating medico:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al crear médico',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
 
   async login(credentials) {
     try {
-      console.log('Intentando login con:', credentials);
-      console.log('URL base:', API_BASE_URL);
       
       const loginApi = axios.create({
         baseURL: API_BASE_URL,
@@ -99,7 +109,6 @@ class AuthService {
         timeout: 30000,
       });
       
-      console.log('📡 Enviando petición a:', API_BASE_URL + '/login');
       const response = await loginApi.post('/login', credentials);
       
       const token = response.data?.token;
@@ -182,10 +191,46 @@ class AuthService {
   }
 
   async getCitas() { return api.get('/citas'); }
-  async crearCita(data) { return api.post('/crearCitas', data); }
+  async crearCita(data) {
+    try {
+      const response = await api.post('/crearCitas', data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error creating cita:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al crear cita',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
   async getCitaPorId(id) { return api.get(`/citas/${id}`); }
-  async editarCita(id, data) { return api.put(`/editarCitas/${id}`, data); }
-  async eliminarCita(id) { return api.delete(`/eliminarCitas/${id}`); }
+  async editarCita(id, data) {
+    try {
+      const response = await api.put(`/editarCitas/${id}`, data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error updating cita:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al actualizar cita',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
+  async eliminarCita(id) {
+    try {
+      const response = await api.delete(`/eliminarCitas/${id}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error deleting cita:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al eliminar cita',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
   async getEspecialidades() {
     try {
       const response = await api.get('/especialidades');
@@ -215,9 +260,45 @@ class AuthService {
       };
     }
   }
-  async crearEspecialidad(data) { return api.post('/crearEspecialidades', data); }
-  async editarEspecialidad(id, data) { return api.put(`/editarEspecialidades/${id}`, data); }
-  async eliminarEspecialidad(id) { return api.delete(`/eliminarEspecialidades/${id}`); }
+  async crearEspecialidad(data) {
+    try {
+      const response = await api.post('/crearEspecialidades', data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error creating especialidad:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al crear especialidad',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
+  async editarEspecialidad(id, data) {
+    try {
+      const response = await api.put(`/editarEspecialidades/${id}`, data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error updating especialidad:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al actualizar especialidad',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
+  async eliminarEspecialidad(id) {
+    try {
+      const response = await api.delete(`/eliminarEspecialidades/${id}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error deleting especialidad:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al eliminar especialidad',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
   async getHorarios() {
     try {
       const response = await api.get('/horarios');
@@ -231,9 +312,99 @@ class AuthService {
       };
     }
   }
-  async crearHorario(data) { return api.post('/crearHorarios', data); }
-  async editarHorario(id, data) { return api.put(`/editarHorarios/${id}`, data); }
-  async eliminarHorario(id) { return api.delete(`/eliminarHorarios/${id}`); }
+  async crearHorario(data) {
+    try {
+      const response = await api.post('/crearHorarios', data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error creating horario:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al crear horario',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
+  async editarHorario(id, data) {
+    try {
+      const response = await api.put(`/editarHorarios/${id}`, data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error updating horario:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al actualizar horario',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
+  async eliminarHorario(id) {
+    try {
+      const response = await api.delete(`/eliminarHorarios/${id}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error deleting horario:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al eliminar horario',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
+
+  async updateHorarioDirect(id, data) {
+    try {
+      const response = await api.put(`/horarios/${id}`, data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error en updateHorarioDirect:', error);
+      throw error;
+    }
+  }
+
+  async updateHorarioAlternative(id, data) {
+    try {
+      const response = await api.post(`/horarios/${id}/update`, data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error en updateHorarioAlternative:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al actualizar horario',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
+
+  async updateHorarioThird(id, data) {
+    try {
+      const response = await api.patch(`/horarios/${id}`, data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error en updateHorarioThird:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al actualizar horario',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
+
+  async updateHorarioFallback(id, data) {
+    try {
+      // Método simple: eliminar y crear
+      await api.delete(`/horarios/${id}`);
+      const response = await api.post('/horarios', data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error en updateHorarioFallback:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al actualizar horario',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
   async getMedicos() {
     try {
       const response = await api.get('/medicos');
@@ -248,9 +419,45 @@ class AuthService {
     }
   }
   async getMedicoPorId(id) { return api.get(`/medicos/${id}`); }
-  async crearMedico(data) { return api.post('/crearMedico', data); }
-  async editarMedico(id, data) { return api.put(`/editarMedico/${id}`, data); }
-  async eliminarMedico(id) { return api.delete(`/eliminarMedico/${id}`); }
+  async crearMedico(data) {
+    try {
+      const response = await api.post('/crearMedico', data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error creating medico:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al crear médico',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
+  async editarMedico(id, data) {
+    try {
+      const response = await api.put(`/editarMedico/${id}`, data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error updating medico:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al actualizar médico',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
+  async eliminarMedico(id) {
+    try {
+      const response = await api.delete(`/eliminarMedico/${id}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error deleting medico:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al eliminar médico',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
   async getPacientes() {
     try {
       const response = await api.get('/pacientes');
@@ -264,9 +471,45 @@ class AuthService {
     }
   }
   async getPacientePorId(id) { return api.get(`/pacientes/${id}`); }
-  async crearPaciente(data) { return api.post('/crearPacientes', data); }
-  async editarPaciente(id, data) { return api.put(`/editarPacientes/${id}`, data); }
-  async eliminarPaciente(id) { return api.delete(`/eliminarPacientes/${id}`); }
+  async crearPaciente(data) {
+    try {
+      const response = await api.post('/crearPacientes', data, { timeout: 15000 });
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error creating paciente:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al crear paciente',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
+  async editarPaciente(id, data) {
+    try {
+      const response = await api.put(`/editarPacientes/${id}`, data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error updating paciente:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al actualizar paciente',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
+  async eliminarPaciente(id) {
+    try {
+      const response = await api.delete(`/eliminarPacientes/${id}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error deleting paciente:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al eliminar paciente',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
 
 async getCitasConMedicos() { return api.get('/citasConMedicos'); }
 async getCitasPendientes() { return api.get('/citasPendientes'); }
@@ -302,7 +545,19 @@ async getMedicosConHorarios() { return api.get('/medicosConHorarios'); }
 async getPacientesConCitas() { return api.get('/pacientesConCitas'); }
 async getPacientesPorEPS(eps) { return api.get(`/pacientesPorEPS/${eps}`); }
 async getEspecialidadesConMedicos() { return api.get('/EspecialidadesConMedicos'); }
-  async registerAdmin(adminData) { return api.post('/crearAdmin', adminData); }
+  async registerAdmin(adminData) {
+    try {
+      const response = await api.post('/crearAdmin', adminData);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error creating admin:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al crear administrador',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
   async getAdmins() {
     try {
       const response = await api.get('/admin');
@@ -317,8 +572,32 @@ async getEspecialidadesConMedicos() { return api.get('/EspecialidadesConMedicos'
     }
   }
   async getAdmin(id) { return api.get(`/admin/${id}`); }
-  async updateAdmin(id, adminData) { return api.put(`/editarAdmin/${id}`, adminData); }
-  async eliminarAdmin(id) { return api.delete(`/eliminarAdmin/${id}`); }
+  async updateAdmin(id, adminData) {
+    try {
+      const response = await api.put(`/editarAdmin/${id}`, adminData);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error updating admin:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al actualizar administrador',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
+  async eliminarAdmin(id) {
+    try {
+      const response = await api.delete(`/eliminarAdmin/${id}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error deleting admin:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al eliminar administrador',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
 }
 
 export default new AuthService();

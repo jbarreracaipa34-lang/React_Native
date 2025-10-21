@@ -7,7 +7,6 @@ import NavigationService from '../../Src/Services/NavegationService';
 
 export default function Perfil({ navigation }) {
   const [usuario, setUsuario] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [rolUsuario, setRolUsuario] = useState(null);
   const [medicoData, setMedicoData] = useState(null);
 
@@ -30,10 +29,8 @@ export default function Perfil({ navigation }) {
         } else {
         }
       }
-      setLoading(false);
     } catch (error) {
       console.error('Error al cargar usuario:', error);
-      setLoading(false);
     }
   };
 
@@ -322,15 +319,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
-  },
-  loadingContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#6B7280',
   },
   header: {
     paddingTop: 50,

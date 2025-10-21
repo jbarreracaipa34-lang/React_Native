@@ -9,7 +9,6 @@ export default function IniciarSession({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [tipoUsuario, setTipoUsuario] = useState('paciente');
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
@@ -19,7 +18,6 @@ export default function IniciarSession({ navigation }) {
       return;
     }
 
-    setLoading(true);
 
     try {
       const result = await AuthService.login({ email, password, user_type: tipoUsuario });
@@ -55,7 +53,6 @@ export default function IniciarSession({ navigation }) {
     } catch (error) {
       Alert.alert('Error', 'Error de conexion');
     } finally {
-      setLoading(false);
     }
   };
 
@@ -141,15 +138,11 @@ export default function IniciarSession({ navigation }) {
           </View>
 
           <TouchableOpacity 
-            style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
+            style={[styles.loginButton]} 
             onPress={handleLogin}
-            disabled={loading}
+            disabled={false}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.loginButtonText}>Iniciar Sesion</Text>
-            )}
+            <Text style={styles.loginButtonText}>Iniciar Sesion</Text>
           </TouchableOpacity>
 
           <View style={styles.divider}>

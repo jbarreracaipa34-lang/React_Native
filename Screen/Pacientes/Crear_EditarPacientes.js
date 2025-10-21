@@ -3,10 +3,11 @@ import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity, Alert,
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import { useFocusEffect } from '@react-navigation/native';
 import AuthService from '../../Src/Services/AuthService';
+import { useNotifications } from '../../Src/Hooks/useNotifications';
 
 export default function Crear_EditarPacientes({ navigation, route }) {
-  const [loading, setLoading] = useState(false);
   const [usuario, setUsuario] = useState(null);
   const [formData, setFormData] = useState({
     nombre: '',
@@ -18,12 +19,16 @@ export default function Crear_EditarPacientes({ navigation, route }) {
     telefono: '',
     email: '',
     direccion: '',
-    eps: ''
+    eps: '',
+    password: '',
+    password_confirmation: ''
   });
   const [errors, setErrors] = useState({});
   
   const pacienteAEditar = route?.params?.paciente;
   const isEditing = !!pacienteAEditar;
+
+  const { notifyUserCreated, permissionsGranted } = useNotifications();
 
   useEffect(() => {
     loadUsuarioData();
@@ -31,6 +36,11 @@ export default function Crear_EditarPacientes({ navigation, route }) {
       cargarDatosPaciente();
     }
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+    }, [])
+  );
 
   const loadUsuarioData = async () => {
     try {
@@ -119,6 +129,18 @@ export default function Crear_EditarPacientes({ navigation, route }) {
       newErrors.telefono = 'El telefono solo puede contener numeros, espacios, guiones, + y parentesis';
     }
 
+    if (!isEditing && !formData.password.trim()) {
+      newErrors.password = 'La contraseña es obligatoria';
+    } else if (!isEditing && formData.password.length < 8) {
+      newErrors.password = 'La contraseña debe tener al menos 8 caracteres';
+    }
+
+    if (!isEditing && !formData.password_confirmation.trim()) {
+      newErrors.password_confirmation = 'La confirmación de contraseña es obligatoria';
+    } else if (!isEditing && formData.password !== formData.password_confirmation) {
+      newErrors.password_confirmation = 'Las contraseñas no coinciden';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -135,40 +157,48 @@ export default function Crear_EditarPacientes({ navigation, route }) {
   }
 
   try {
-    const tokenVerification = await AuthService.verifyToken();
-    console.log('Verificacion de token:', tokenVerification);
-    
-    if (!tokenVerification.success) {
-      Alert.alert('Error', 'Tu sesion ha expirado. Por favor inicia sesion nuevamente.');
-      return;
+    let pacienteData;
+    if (isEditing) {
+      const { password, password_confirmation, ...dataWithoutPassword } = formData;
+      pacienteData = {
+        ...dataWithoutPassword,
+        usuario_id: usuario.id
+      };
+    } else {
+      // Para crear paciente, excluir password_confirmation del envío
+      const { password_confirmation, ...dataToSend } = formData;
+      pacienteData = {
+        ...dataToSend,
+        // Asegurar que los campos opcionales tengan valores por defecto
+        email: dataToSend.email || '',
+        direccion: dataToSend.direccion || ''
+      };
     }
-  } catch (error) {
-    Alert.alert('Error', 'Problema de autenticacion. Por favor inicia sesion nuevamente.');
-    return;
-  }
 
-  try {
-    setLoading(true);
-
-    const pacienteData = {
-      ...formData
-    };
-
+    console.log('📝 Datos del paciente a enviar:', pacienteData);
 
     let response;
     if (isEditing) {
-      const pacienteDataWithUserId = {
-        ...formData,
-        usuario_id: usuario.id
-      };
-      response = await AuthService.editarPaciente(pacienteAEditar.id, pacienteDataWithUserId);
+      response = await AuthService.editarPaciente(pacienteAEditar.id, pacienteData);
     } else {
-      response = await AuthService.registrarPacienteConUserId(pacienteData);
+      response = await AuthService.crearPaciente(pacienteData);
     }
 
-    if (response && response.data) {
+    console.log('📥 Respuesta del servidor:', response);
+
+    if (response && response.success) {
+      if (!isEditing && permissionsGranted) {
+        // Usar los datos del formulario para la notificación si no hay datos en la respuesta
+        const patientData = response.data || {
+          id: 'nuevo',
+          nombre: formData.nombre,
+          apellido: formData.apellido
+        };
+        await notifyUserCreated(patientData, 'paciente');
+      }
+
       Alert.alert(
-        'exito',
+        'Éxito',
         isEditing ? 'Paciente actualizado correctamente' : 'Paciente creado correctamente',
         [
           {
@@ -178,9 +208,19 @@ export default function Crear_EditarPacientes({ navigation, route }) {
         ]
       );
     } else {
-      throw new Error(response?.response?.data?.message || 'Error al procesar la solicitud');
+      throw new Error(response?.message || 'Error al procesar la solicitud');
     }
   } catch (error) {
+    console.error('❌ Error completo al guardar paciente:', error);
+    console.log('📊 Detalles del error:', {
+      message: error.message,
+      response: error.response ? {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data
+      } : 'No hay respuesta'
+    });
+    
     let errorMessage = 'Error desconocido al guardar el paciente';
     
     if (error.response) {
@@ -196,14 +236,30 @@ export default function Crear_EditarPacientes({ navigation, route }) {
           break;
         case 422:
           if (data.errors) {
+            // Mostrar el primer error de validación
             const firstError = Object.values(data.errors)[0];
-            errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
+            let specificError = Array.isArray(firstError) ? firstError[0] : firstError;
+            
+            // Mensajes más específicos para errores comunes
+            if (specificError.includes('email') && specificError.includes('unique')) {
+              errorMessage = 'Ya existe un paciente con este email';
+            } else if (specificError.includes('numeroDocumento') && specificError.includes('unique')) {
+              errorMessage = 'Ya existe un paciente con este número de documento';
+            } else {
+              errorMessage = specificError;
+            }
           } else {
             errorMessage = data.message || 'Datos invalidos';
           }
           break;
         case 409:
-          errorMessage = 'Ya existe un paciente con este numero de documento';
+          if (data.message && data.message.includes('email')) {
+            errorMessage = 'Ya existe un paciente con este email';
+          } else if (data.message && data.message.includes('numeroDocumento')) {
+            errorMessage = 'Ya existe un paciente con este número de documento';
+          } else {
+            errorMessage = 'Ya existe un paciente con estos datos';
+          }
           break;
         case 500:
           if (data.message && data.message.includes("usuario_id")) {
@@ -219,7 +275,6 @@ export default function Crear_EditarPacientes({ navigation, route }) {
     
     Alert.alert('Error', errorMessage);
   } finally {
-    setLoading(false);
   }
 };
 
@@ -243,7 +298,7 @@ export default function Crear_EditarPacientes({ navigation, route }) {
     placeholder,
     keyboardType = 'default',
     multiline = false,
-    maxLength = null
+    maxLength = undefined
   ) => (
     <View style={styles.inputContainer}>
       <Text style={styles.inputLabel}>
@@ -270,7 +325,7 @@ export default function Crear_EditarPacientes({ navigation, route }) {
         keyboardType={keyboardType}
         multiline={multiline}
         numberOfLines={multiline ? 3 : 1}
-        maxLength={maxLength}
+        {...(maxLength && { maxLength })}
         autoCapitalize={field === 'email' ? 'none' : 'words'}
         autoCorrect={false}
       />
@@ -377,32 +432,31 @@ export default function Crear_EditarPacientes({ navigation, route }) {
           </View>
 
           {renderInput('EPS', 'eps', 'Ingrese la EPS')}
+          
+          {!isEditing && renderInput('Contraseña', 'password', 'Ingrese la contraseña', 'default', false)}
+          {!isEditing && renderInput('Confirmar Contraseña', 'password_confirmation', 'Confirme la contraseña', 'default', false)}
         </View>
 
         <View style={styles.actionButtons}>
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={() => navigation.goBack()}
-            disabled={loading}
+            disabled={false}
           >
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+            style={[styles.saveButton]}
             onPress={handleSubmit}
-            disabled={loading || !usuario}
+            disabled={!usuario}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <>
-                <Ionicons name="checkmark" size={20} color="#FFF" />
-                <Text style={styles.saveButtonText}>
-                  {isEditing ? 'Actualizar' : 'Guardar'}
-                </Text>
-              </>
-            )}
+            <>
+              <Ionicons name="checkmark" size={20} color="#FFF" />
+              <Text style={styles.saveButtonText}>
+                {isEditing ? 'Actualizar' : 'Guardar'}
+              </Text>
+            </>
           </TouchableOpacity>
         </View>
 
@@ -551,17 +605,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 10,
     fontWeight: '600',
-  },
-  loadingUserContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-  },
-  loadingUserText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#666',
   },
   actionButtons: {
     flexDirection: 'row',

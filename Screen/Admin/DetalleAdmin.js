@@ -8,7 +8,7 @@ export default function DetalleAdmin({ route, navigation }) {
   const { admin } = route.params;
   const [usuario, setUsuario] = useState(null);
   const [adminDetallado, setAdminDetallado] = useState(admin);
-  const [loading, setLoading] = useState(false);
+(false);
 
   useEffect(() => {
     loadUsuarioData();
@@ -28,14 +28,12 @@ export default function DetalleAdmin({ route, navigation }) {
 
   const cargarDetallesCompletos = async () => {
     try {
-      setLoading(true);
       
       setAdminDetallado(admin);
       
     } catch (error) {
       console.error('Error al cargar detalles:', error);
     } finally {
-      setLoading(false);
     }
   };
 

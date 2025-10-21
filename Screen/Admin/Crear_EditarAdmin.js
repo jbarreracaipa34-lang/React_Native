@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import AuthService from '../../Src/Services/AuthService';
 
 export default function Crear_EditarAdmin({ navigation, route }) {
-  const [loading, setLoading] = useState(false);
   const [usuario, setUsuario] = useState(null);
   const [formData, setFormData] = useState({
     nombre: '',
@@ -93,7 +92,6 @@ export default function Crear_EditarAdmin({ navigation, route }) {
       return;
     }
 
-    setLoading(true);
 
     try {
       let result;
@@ -137,7 +135,6 @@ export default function Crear_EditarAdmin({ navigation, route }) {
       console.error('Error:', error);
       Alert.alert('Error', `Error de conexión: ${error.message}`);
     } finally {
-      setLoading(false);
     }
   };
 
@@ -269,26 +266,22 @@ export default function Crear_EditarAdmin({ navigation, route }) {
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={() => navigation.goBack()}
-            disabled={loading}
+            disabled={false}
           >
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+            style={[styles.saveButton]}
             onPress={handleSubmit}
-            disabled={loading || !usuario}
+            disabled={!usuario}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <>
-                <Ionicons name="checkmark" size={20} color="#FFF" />
-                <Text style={styles.saveButtonText}>
-                  {isEditing ? 'Actualizar' : 'Guardar'}
-                </Text>
-              </>
-            )}
+            <>
+              <Ionicons name="checkmark" size={20} color="#FFF" />
+              <Text style={styles.saveButtonText}>
+                {isEditing ? 'Actualizar' : 'Guardar'}
+              </Text>
+            </>
           </TouchableOpacity>
         </View>
 

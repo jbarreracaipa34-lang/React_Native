@@ -19,7 +19,6 @@ export default function Registrar({ navigation }) {
     password: '',
     password_confirmation: ''
   });
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showTipoDocModal, setShowTipoDocModal] = useState(false);
@@ -73,7 +72,6 @@ export default function Registrar({ navigation }) {
   const handleRegister = async () => {
     if (!validateForm()) return;
 
-    setLoading(true);
 
     try {
       const result = await AuthService.registerPaciente(formData);
@@ -99,7 +97,6 @@ export default function Registrar({ navigation }) {
     } catch (error) {
       Alert.alert('Error', `Error de conexion: ${error.message}`);
     } finally {
-      setLoading(false);
     }
   };
 
@@ -314,15 +311,11 @@ export default function Registrar({ navigation }) {
           </View>
 
           <TouchableOpacity 
-            style={[styles.registerButton, loading && styles.registerButtonDisabled]} 
+            style={[styles.registerButton]} 
             onPress={handleRegister}
-            disabled={loading}
+            disabled={false}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.registerButtonText}>Crear Cuenta</Text>
-            )}
+            <Text style={styles.registerButtonText}>Crear Cuenta</Text>
           </TouchableOpacity>
 
           <View style={styles.divider}>

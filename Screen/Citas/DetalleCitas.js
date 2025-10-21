@@ -71,13 +71,24 @@ export default function DetalleCitas({ route, navigation }) {
     } catch (error) {
       console.error('Error cargando detalles:', error);
     } finally {
-      setLoading(false);
     }
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'No disponible';
-    const date = new Date(dateString);
+    
+    let date;
+    if (dateString.includes('T')) {
+      date = new Date(dateString);
+    } else {
+      // Para fechas sin hora, agregar T00:00:00 para evitar problemas de zona horaria
+      date = new Date(dateString + 'T00:00:00');
+    }
+    
+    if (isNaN(date.getTime())) {
+      return 'Fecha inválida';
+    }
+    
     return date.toLocaleDateString('es-ES', {
       weekday: 'long',
       day: '2-digit',

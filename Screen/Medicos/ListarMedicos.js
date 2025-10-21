@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, Text, View, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import AuthService from '../../Src/Services/AuthService';
 
 export default function ListarMedicos({ navigation }) {
@@ -9,7 +10,6 @@ export default function ListarMedicos({ navigation }) {
   const [medicos, setMedicos] = useState([]);
   const [filteredMedicos, setFilteredMedicos] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [filtroEspecialidad, setFiltroEspecialidad] = useState('todas');
   const [medicoExpandido, setMedicoExpandido] = useState(null);
 
@@ -27,6 +27,28 @@ export default function ListarMedicos({ navigation }) {
     aplicarFiltros();
   }, [medicos, filtroEspecialidad]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (usuario) {
+        setTimeout(() => {
+          loadMedicos();
+        }, 100);
+      }
+    }, [usuario])
+  );
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (usuario) {
+        setTimeout(() => {
+          loadMedicos();
+        }, 50);
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, usuario]);
+
   const loadUsuarioData = async () => {
     try {
       const authData = await AuthService.isAuthenticated();
@@ -40,7 +62,6 @@ export default function ListarMedicos({ navigation }) {
 
   const loadMedicos = async () => {
     try {
-      setLoading(true);
       const medicosResult = await AuthService.getMedicosConEspecialidades();
 
       if (medicosResult.success && medicosResult.data && Array.isArray(medicosResult.data)) {
@@ -61,7 +82,6 @@ export default function ListarMedicos({ navigation }) {
       setMedicos([]);
       Alert.alert('Error', 'No se pudieron cargar los medicos: ' + error.message);
     } finally {
-      setLoading(false);
     }
   };
 
@@ -101,7 +121,14 @@ export default function ListarMedicos({ navigation }) {
       return;
     }
 
-    navigation.navigate('Crear_EditarMedicos', { medico: medico });
+    navigation.navigate('Crear_EditarMedicos', { 
+      medico: medico,
+      onGoBack: () => {
+        setTimeout(() => {
+          loadMedicos();
+        }, 200);
+      }
+    });
   };
 
   const handleEliminarMedico = (medico) => {
@@ -115,7 +142,14 @@ export default function ListarMedicos({ navigation }) {
       return;
     }
 
-    navigation.navigate('EliminarMedicos', { medico: medico });
+    navigation.navigate('EliminarMedicos', { 
+      medico: medico,
+      onGoBack: () => {
+        setTimeout(() => {
+          loadMedicos();
+        }, 200);
+      }
+    });
   };
 
   const renderAccionesMedico = (medico) => {
@@ -145,7 +179,14 @@ export default function ListarMedicos({ navigation }) {
         <View style={styles.accionesMedico}>
           <TouchableOpacity
             style={[styles.botonAccion, { borderColor: '#1E88E5' }]}
-            onPress={() => navigation.navigate('DetalleMedicos', { medico: medico })}
+            onPress={() => navigation.navigate('DetalleMedicos', { 
+              medico: medico,
+              onGoBack: () => {
+                setTimeout(() => {
+                  loadMedicos();
+                }, 200);
+              }
+            })}
           >
             <Ionicons name="eye-outline" size={18} color="#1E88E5" />
           </TouchableOpacity>
@@ -230,7 +271,13 @@ export default function ListarMedicos({ navigation }) {
       {usuario?.role === 'admin' && (
         <TouchableOpacity
           style={styles.emptyButton}
-          onPress={() => navigation.navigate('Crear_EditarMedicos')}
+          onPress={() => navigation.navigate('Crear_EditarMedicos', {
+            onGoBack: () => {
+              setTimeout(() => {
+                loadMedicos();
+              }, 200);
+            }
+          })}
         >
           <Text style={styles.emptyButtonText}>Agregar primer medico</Text>
         </TouchableOpacity>
@@ -263,7 +310,13 @@ export default function ListarMedicos({ navigation }) {
           {usuario?.role === 'admin' && (
             <TouchableOpacity
               style={styles.newButton}
-              onPress={() => navigation.navigate('Crear_EditarMedicos')}
+              onPress={() => navigation.navigate('Crear_EditarMedicos', {
+                onGoBack: () => {
+                  setTimeout(() => {
+                    loadMedicos();
+                  }, 200);
+                }
+              })}
             >
               <Ionicons name="add" size={20} color="#FFF" />
               <Text style={styles.newButtonText}>Nuevo</Text>
@@ -315,17 +368,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
   },
   header: {
     backgroundColor: '#FFF',

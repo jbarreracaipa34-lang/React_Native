@@ -7,7 +7,6 @@ import AuthService from '../../Src/Services/AuthService';
 export default function EliminarMedicos({ route, navigation }) {
   const { medico } = route.params;
   const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
-  const [cargando, setCargando] = useState(false);
   const [usuario, setUsuario] = useState(null);
 
   useEffect(() => {
@@ -36,7 +35,6 @@ export default function EliminarMedicos({ route, navigation }) {
       return;
     }
 
-    setCargando(true);
     try {
       const response = await AuthService.eliminarMedico(medico.id);
       
@@ -75,7 +73,6 @@ export default function EliminarMedicos({ route, navigation }) {
 
       Alert.alert('Error', mensaje);
     } finally {
-      setCargando(false);
     }
   };
 
@@ -181,7 +178,7 @@ export default function EliminarMedicos({ route, navigation }) {
             <TouchableOpacity
               style={styles.botonEliminar}
               onPress={() => setMostrarConfirmacion(true)}
-              disabled={cargando}
+              disabled={false}
             >
               <Ionicons name="trash-outline" size={20} color="#FFF" />
               <Text style={styles.textoBoton}>Eliminar Médico</Text>
@@ -236,13 +233,7 @@ export default function EliminarMedicos({ route, navigation }) {
               Esta acción no se puede deshacer
             </Text>
 
-            {cargando ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#C62828" />
-                <Text style={styles.loadingText}>Eliminando médico...</Text>
-              </View>
-            ) : (
-              <View style={styles.botonesConfirm}>
+            <View style={styles.botonesConfirm}>
                 <TouchableOpacity
                   style={styles.botonNo}
                   onPress={() => setMostrarConfirmacion(false)}
@@ -258,7 +249,6 @@ export default function EliminarMedicos({ route, navigation }) {
                   <Text style={styles.textoSi}>Sí, eliminar</Text>
                 </TouchableOpacity>
               </View>
-            )}
           </View>
         )}
       </ScrollView>
@@ -457,16 +447,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: 24,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    gap: 16,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '500',
   },
   botonesConfirm: {
     flexDirection: 'row',

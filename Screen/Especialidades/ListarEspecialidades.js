@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, Text, View, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import AuthService from '../../Src/Services/AuthService';
 
 export default function ListarEspecialidades({ navigation, route }) {
@@ -21,6 +22,16 @@ export default function ListarEspecialidades({ navigation, route }) {
     }
   }, [usuario]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (usuario) {
+        setTimeout(() => {
+          loadEspecialidades(usuario);
+        }, 100);
+      }
+    }, [usuario])
+  );
+
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       const shouldRefresh = route?.params?.refresh;
@@ -29,7 +40,11 @@ export default function ListarEspecialidades({ navigation, route }) {
         
         setTimeout(() => {
           loadEspecialidades(usuario);
-        }, 1000);
+        }, 100);
+      } else if (usuario) {
+        setTimeout(() => {
+          loadEspecialidades(usuario);
+        }, 50);
       }
     });
 
@@ -231,7 +246,14 @@ export default function ListarEspecialidades({ navigation, route }) {
   };
 
   const handleEditarEspecialidad = (especialidad) => {
-    navigation.navigate('Crear_EditarEspecialidades', { especialidad: especialidad });
+    navigation.navigate('Crear_EditarEspecialidades', { 
+      especialidad: especialidad,
+      onGoBack: () => {
+        setTimeout(() => {
+          loadEspecialidades(usuario);
+        }, 200);
+      }
+    });
   };
 
   const handleEliminarEspecialidad = (especialidad) => {
@@ -239,15 +261,35 @@ export default function ListarEspecialidades({ navigation, route }) {
       Alert.alert('Acceso denegado', 'Solo los administradores pueden eliminar especialidades');
       return;
     }
-    navigation.navigate('EliminarEspecialidades', { especialidad: especialidad });
+    navigation.navigate('EliminarEspecialidades', { 
+      especialidad: especialidad,
+      onGoBack: () => {
+        setTimeout(() => {
+          loadEspecialidades(usuario);
+        }, 200);
+      }
+    });
   };
 
   const handleDetalleEspecialidad = (especialidad) => {
-    navigation.navigate('DetalleEspecialidades', { especialidad: especialidad });
+    navigation.navigate('DetalleEspecialidades', { 
+      especialidad: especialidad,
+      onGoBack: () => {
+        setTimeout(() => {
+          loadEspecialidades(usuario);
+        }, 200);
+      }
+    });
   };
 
   const handleCrearEspecialidad = () => {
-    navigation.navigate('Crear_EditarEspecialidades');
+    navigation.navigate('Crear_EditarEspecialidades', {
+      onGoBack: () => {
+        setTimeout(() => {
+          loadEspecialidades(usuario);
+        }, 200);
+      }
+    });
   };
 
   const contarEstadisticas = () => {
@@ -491,17 +533,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
   },
   errorContainer: {
     alignItems: 'center',

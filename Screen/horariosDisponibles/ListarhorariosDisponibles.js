@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, Text, View, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import AuthService from '../../Src/Services/AuthService';
 
 export default function ListarHorariosDisponibles({ navigation }) {
@@ -19,6 +20,28 @@ export default function ListarHorariosDisponibles({ navigation }) {
       loadHorarios();
     }
   }, [usuario]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (usuario) {
+        setTimeout(() => {
+          loadHorarios();
+        }, 100);
+      }
+    }, [usuario])
+  );
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (usuario) {
+        setTimeout(() => {
+          loadHorarios();
+        }, 50);
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, usuario]);
 
   const loadUserData = async () => {
     try {
@@ -129,23 +152,58 @@ export default function ListarHorariosDisponibles({ navigation }) {
   };
 
   const handleCrearCita = (medico) => {
-    navigation.navigate('Crear_EditarCitas', { medico: medico });
+    navigation.navigate('Crear_EditarCitas', { 
+      medico: medico,
+      onGoBack: () => {
+        setTimeout(() => {
+          loadHorarios();
+        }, 200);
+      }
+    });
   };
 
   const handleCrearHorarios = (medico = null) => {
-    navigation.navigate('Crear_EditarHorariosDisponibles', { medico: medico });
+    navigation.navigate('Crear_EditarHorariosDisponibles', { 
+      medico: medico,
+      onGoBack: () => {
+        setTimeout(() => {
+          loadHorarios();
+        }, 200);
+      }
+    });
   };
 
   const handleEditarHorarios = (medico) => {
-    navigation.navigate('Crear_EditarHorariosDisponibles', { medico: medico });
+    navigation.navigate('Crear_EditarHorariosDisponibles', { 
+      medico: medico,
+      onGoBack: () => {
+        setTimeout(() => {
+          loadHorarios();
+        }, 200);
+      }
+    });
   };
 
   const handleDetalleHorarios = (medico) => {
-    navigation.navigate('DetalleHorariosDisponibles', { medico: medico });
+    navigation.navigate('DetalleHorariosDisponibles', { 
+      medico: medico,
+      onGoBack: () => {
+        setTimeout(() => {
+          loadHorarios();
+        }, 200);
+      }
+    });
   };
 
   const handleEliminarHorarios = (medico) => {
-    navigation.navigate('EliminarHorariosDisponibles', { medico: medico });
+    navigation.navigate('EliminarHorariosDisponibles', { 
+      medico: medico,
+      onGoBack: () => {
+        setTimeout(() => {
+          loadHorarios();
+        }, 200);
+      }
+    });
   };
 
   const formatTime = (time) => {
@@ -478,17 +536,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
   },
   header: {
     backgroundColor: '#FFF',

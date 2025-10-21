@@ -6,13 +6,11 @@ import { useFocusEffect } from '@react-navigation/native';
 
 export default function Configuracion() {
   const [permisoNotificaciones, setPermisoNotificaciones] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   const checkPermisos = async () => {
     const { status } = await Notifications.getPermissionsAsync();
     const preferencia = await AsyncStorage.getItem('notificaciones_activas');
     setPermisoNotificaciones(status === 'granted' && preferencia === 'true');
-    setLoading(false);
   };
 
   useEffect(() => {

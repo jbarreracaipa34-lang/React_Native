@@ -7,7 +7,7 @@ import AuthService from '../../Src/Services/AuthService';
 export default function EliminarHorariosDisponibles({ route, navigation }) {
   const { medico } = route.params;
   const [horariosIndividuales, setHorariosIndividuales] = useState([]);
-  const [loading, setLoading] = useState(true);
+(true);
   const [deleting, setDeleting] = useState(false);
   const [selectedHorarios, setSelectedHorarios] = useState([]);
   const [usuario, setUsuario] = useState(null);
@@ -30,7 +30,6 @@ export default function EliminarHorariosDisponibles({ route, navigation }) {
 
   const loadHorariosIndividuales = async () => {
     try {
-      setLoading(true);
       const response = await AuthService.getHorariosDisponiblesPorMedico();
       
       if (response && response.data && Array.isArray(response.data)) {
@@ -44,7 +43,6 @@ export default function EliminarHorariosDisponibles({ route, navigation }) {
       console.error('Error al cargar horarios:', error);
       Alert.alert('Error', 'No se pudieron cargar los horarios');
     } finally {
-      setLoading(false);
     }
   };
 
@@ -313,17 +311,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
   },
   header: {
     backgroundColor: '#FFF',

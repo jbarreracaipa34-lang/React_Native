@@ -4,19 +4,24 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import AuthService from '../../Src/Services/AuthService';
+import { useNotifications } from '../../Src/Hooks/useNotifications';
 
 export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
-  const [loading, setLoading] = useState(false);
-  const [loadingData, setLoadingData] = useState(true);
+  const { notifyScheduleCreated } = useNotifications();
   const [usuario, setUsuario] = useState(null);
   const [medicos, setMedicos] = useState([]);
   const [medicoActual, setMedicoActual] = useState(null);
   const [showDayPicker, setShowDayPicker] = useState(false);
+  const [horariosExistentes, setHorariosExistentes] = useState([]);
+  const [horarioSeleccionado, setHorarioSeleccionado] = useState(null);
+  const [showHorarioPicker, setShowHorarioPicker] = useState(false);
   const [formData, setFormData] = useState({
     medicos_id: '',
     diaSemana: '',
     horaInicio: '',
-    horaFin: ''
+    horaFin: '',
+    nuevaHoraInicio: '',
+    nuevaHoraFin: ''
   });
   const [errors, setErrors] = useState({});
   
@@ -38,22 +43,24 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
 
   const loadInitialData = async () => {
     try {
-      setLoadingData(true);
       await loadUserData();
       await loadMedicos();
       
       if (isEditing && medicoParam) {
+        await loadHorariosExistentes(medicoParam.medicos_id);
+        
         setFormData({
           medicos_id: medicoParam.medicos_id || '',
           diaSemana: medicoParam.diaSemana || '',
           horaInicio: medicoParam.horaInicio || '',
-          horaFin: medicoParam.horaFin || ''
+          horaFin: medicoParam.horaFin || '',
+          nuevaHoraInicio: medicoParam.horaInicio || '',
+          nuevaHoraFin: medicoParam.horaFin || ''
         });
       }
     } catch (error) {
       Alert.alert('Error', 'No se pudo cargar la informacion inicial');
     } finally {
-      setLoadingData(false);
     }
   };
 
@@ -221,6 +228,58 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
     }
   };
 
+  const loadHorariosExistentes = async (medicoId) => {
+    try {
+      const result = await AuthService.getHorariosDisponiblesPorMedico();
+      if (result.success) {
+        const horariosDelMedico = result.data.filter(horario => 
+          horario.medicos_id === medicoId
+        );
+        setHorariosExistentes(horariosDelMedico);
+      }
+    } catch (error) {
+      console.error('Error loading horarios existentes:', error);
+    }
+  };
+
+  const handleSeleccionarHorario = (horario) => {
+    setHorarioSeleccionado(horario);
+    setFormData(prev => ({
+      ...prev,
+      horaInicio: horario.horaInicio,
+      horaFin: horario.horaFin,
+      diaSemana: horario.diaSemana,
+      nuevaHoraInicio: horario.horaInicio,
+      nuevaHoraFin: horario.horaFin
+    }));
+    setShowHorarioPicker(false);
+  };
+
+  const handleInputChange = (field, value) => {
+    let processedValue = value;
+    
+    if (field === 'horaInicio' || field === 'horaFin' || field === 'nuevaHoraInicio' || field === 'nuevaHoraFin') {
+      processedValue = formatTimeInput(value);
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      [field]: processedValue
+    }));
+    
+    if (field === 'medicos_id' && isEditing && processedValue) {
+      loadHorariosExistentes(processedValue);
+      setHorarioSeleccionado(null);
+    }
+    
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: null
+      }));
+    }
+  };
+
   const formatTimeInput = (text) => {
     const numbers = text.replace(/\D/g, '');
     
@@ -235,26 +294,6 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
     return formatted;
   };
 
-  const handleInputChange = (field, value) => {
-    let processedValue = value;
-    
-    if (field === 'horaInicio' || field === 'horaFin') {
-      processedValue = formatTimeInput(value);
-    }
-    
-    setFormData(prev => ({
-      ...prev,
-      [field]: processedValue
-    }));
-    
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: null
-      }));
-    }
-  };
-
   const validateForm = () => {
     const newErrors = {};
 
@@ -262,30 +301,61 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
       newErrors.medicos_id = 'Debe seleccionar un medico';
     }
 
-    if (!formData.diaSemana) {
-      newErrors.diaSemana = 'Debe seleccionar un dia';
+    if (isEditing) {
+      if (!horarioSeleccionado) {
+        newErrors.horarioSeleccionado = 'Debe seleccionar un horario a editar';
+      }
+    } else {
+      if (!formData.diaSemana) {
+        newErrors.diaSemana = 'Debe seleccionar un dia';
+      }
     }
 
-    if (!formData.horaInicio.trim()) {
-      newErrors.horaInicio = 'La hora de inicio es obligatoria';
-    } else if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.horaInicio)) {
-      newErrors.horaInicio = 'Formato de hora invalido (HH:MM)';
-    }
+    if (isEditing) {
+      if (!formData.nuevaHoraInicio.trim()) {
+        newErrors.nuevaHoraInicio = 'La nueva hora de inicio es obligatoria';
+      } else if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.nuevaHoraInicio)) {
+        newErrors.nuevaHoraInicio = 'Formato de hora invalido (HH:MM)';
+      }
 
-    if (!formData.horaFin.trim()) {
-      newErrors.horaFin = 'La hora de fin es obligatoria';
-    } else if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.horaFin)) {
-      newErrors.horaFin = 'Formato de hora invalido (HH:MM)';
-    }
+      if (!formData.nuevaHoraFin.trim()) {
+        newErrors.nuevaHoraFin = 'La nueva hora de fin es obligatoria';
+      } else if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.nuevaHoraFin)) {
+        newErrors.nuevaHoraFin = 'Formato de hora invalido (HH:MM)';
+      }
 
-    if (formData.horaInicio && formData.horaFin && 
-        /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.horaInicio) &&
-        /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.horaFin)) {
-      const inicio = new Date(`2000-01-01T${formData.horaInicio}:00`);
-      const fin = new Date(`2000-01-01T${formData.horaFin}:00`);
-      
-      if (fin <= inicio) {
-        newErrors.horaFin = 'La hora de fin debe ser posterior a la hora de inicio';
+      if (formData.nuevaHoraInicio && formData.nuevaHoraFin &&
+          /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.nuevaHoraInicio) &&
+          /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.nuevaHoraFin)) {
+        const inicio = new Date(`2000-01-01T${formData.nuevaHoraInicio}:00`);
+        const fin = new Date(`2000-01-01T${formData.nuevaHoraFin}:00`);
+        
+        if (fin <= inicio) {
+          newErrors.nuevaHoraFin = 'La hora de fin debe ser posterior a la hora de inicio';
+        }
+      }
+    } else {
+      if (!formData.horaInicio.trim()) {
+        newErrors.horaInicio = 'La hora de inicio es obligatoria';
+      } else if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.horaInicio)) {
+        newErrors.horaInicio = 'Formato de hora invalido (HH:MM)';
+      }
+
+      if (!formData.horaFin.trim()) {
+        newErrors.horaFin = 'La hora de fin es obligatoria';
+      } else if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.horaFin)) {
+        newErrors.horaFin = 'Formato de hora invalido (HH:MM)';
+      }
+
+      if (formData.horaInicio && formData.horaFin && 
+          /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.horaInicio) &&
+          /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.horaFin)) {
+        const inicio = new Date(`2000-01-01T${formData.horaInicio}:00`);
+        const fin = new Date(`2000-01-01T${formData.horaFin}:00`);
+        
+        if (fin <= inicio) {
+          newErrors.horaFin = 'La hora de fin debe ser posterior a la hora de inicio';
+        }
       }
     }
 
@@ -300,25 +370,43 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
     }
 
     try {
-      setLoading(true);
-
       const horarioData = {
         medicos_id: formData.medicos_id,
         diaSemana: formData.diaSemana,
-        horaInicio: formData.horaInicio,
-        horaFin: formData.horaFin
+        horaInicio: isEditing ? formData.nuevaHoraInicio : formData.horaInicio,
+        horaFin: isEditing ? formData.nuevaHoraFin : formData.horaFin
       };
 
       let response;
+      
       if (isEditing) {
-        response = await AuthService.editarHorario(medicoParam.id, horarioData);
+        
+        response = await AuthService.editarHorario(horarioSeleccionado.id, horarioData);
       } else {
         response = await AuthService.crearHorario(horarioData);
       }
 
-      if (response && (response.data || response.success)) {
+      if (response && response.success) {
+        // Enviar notificación solo para horarios nuevos (no para ediciones)
+        if (!isEditing) {
+          const medicoSeleccionado = medicos.find(m => m.id === parseInt(formData.medicos_id));
+          if (medicoSeleccionado) {
+            const scheduleData = {
+              id: response.data?.id || 'nuevo',
+              medico_nombre: medicoSeleccionado.nombre,
+              medico_apellido: medicoSeleccionado.apellido,
+              diaSemana: formData.diaSemana,
+              horaInicio: formData.horaInicio,
+              horaFin: formData.horaFin
+            };
+            
+            console.log('📅 Enviando notificación de horario creado...');
+            await notifyScheduleCreated(scheduleData);
+          }
+        }
+        
         Alert.alert(
-          'exito',
+          'Éxito',
           `Horario ${isEditing ? 'actualizado' : 'creado'} correctamente`,
           [
             {
@@ -328,7 +416,7 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
           ]
         );
       } else {
-        throw new Error('Respuesta inesperada del servidor');
+        throw new Error(response?.message || 'Respuesta inesperada del servidor');
       }
 
     } catch (error) {
@@ -340,8 +428,11 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
         const { status, data } = error.response;
         
         switch (status) {
+          case 404:
+            errorMessage = 'El horario no existe o el endpoint no está disponible';
+            break;
           case 409:
-            errorMessage = 'Ya existe un horario en ese dia y hora';
+            errorMessage = 'Ya existe un horario en ese día y hora';
             break;
           case 422:
             if (data.errors) {
@@ -350,7 +441,7 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
                 return `• ${field}: ${errorArray.join(', ')}`;
               }).join('\n');
               
-              errorMessage = `Errores de validacion:\n${errorsList}`;
+              errorMessage = `Errores de validación:\n${errorsList}`;
             } else if (data.message) {
               errorMessage = data.message;
             }
@@ -363,8 +454,6 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
       }
       
       Alert.alert('Error', errorMessage);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -412,6 +501,53 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
                 )}
               </TouchableOpacity>
             ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderHorarioPicker = () => (
+    <Modal
+      visible={showHorarioPicker}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowHorarioPicker(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Seleccionar Horario</Text>
+            <TouchableOpacity
+              style={styles.modalClose}
+              onPress={() => setShowHorarioPicker(false)}
+            >
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.modalScrollView}>
+            {horariosExistentes.map((horario, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.horarioItem}
+                onPress={() => handleSeleccionarHorario(horario)}
+              >
+                <View style={styles.horarioInfo}>
+                  <Text style={styles.horarioDia}>{horario.diaSemana}</Text>
+                  <Text style={styles.horarioHoras}>
+                    {horario.horaInicio} - {horario.horaFin}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#666" />
+              </TouchableOpacity>
+            ))}
+            
+            {horariosExistentes.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No hay horarios disponibles</Text>
+              </View>
+            )}
           </ScrollView>
         </View>
       </View>
@@ -529,54 +665,75 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
 
           {renderMedicoSelector()}
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>
-              Dia de la semana <Text style={styles.required}>*</Text>
-            </Text>
-            <TouchableOpacity
-              style={[styles.selectInput, errors.diaSemana && styles.inputError]}
-              onPress={() => setShowDayPicker(true)}
-            >
-              <Text style={[styles.selectInputText, !formData.diaSemana && styles.placeholder]}>
-                {formData.diaSemana 
-                  ? diasSemana.find(d => d.key === formData.diaSemana)?.label 
-                  : 'Seleccionar dia'
-                }
+          {isEditing ? (
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>
+                Seleccionar Horario a Editar <Text style={styles.required}>*</Text>
               </Text>
-              <Ionicons name="chevron-down" size={20} color="#666" />
-            </TouchableOpacity>
-            {errors.diaSemana && <Text style={styles.errorText}>{errors.diaSemana}</Text>}
-          </View>
+              <TouchableOpacity
+                style={[styles.selectInput, errors.horarioSeleccionado && styles.inputError]}
+                onPress={() => setShowHorarioPicker(true)}
+              >
+                <Text style={[styles.selectInputText, !horarioSeleccionado && styles.placeholder]}>
+                  {horarioSeleccionado 
+                    ? `${horarioSeleccionado.diaSemana} - ${horarioSeleccionado.horaInicio} a ${horarioSeleccionado.horaFin}`
+                    : 'Seleccionar horario'
+                  }
+                </Text>
+                <Ionicons name="chevron-down" size={20} color="#666" />
+              </TouchableOpacity>
+              {errors.horarioSeleccionado && <Text style={styles.errorText}>{errors.horarioSeleccionado}</Text>}
+            </View>
+          ) : (
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>
+                Dia de la semana <Text style={styles.required}>*</Text>
+              </Text>
+              <TouchableOpacity
+                style={[styles.selectInput, errors.diaSemana && styles.inputError]}
+                onPress={() => setShowDayPicker(true)}
+              >
+                <Text style={[styles.selectInputText, !formData.diaSemana && styles.placeholder]}>
+                  {formData.diaSemana 
+                    ? diasSemana.find(d => d.key === formData.diaSemana)?.label 
+                    : 'Seleccionar dia'
+                  }
+                </Text>
+                <Ionicons name="chevron-down" size={20} color="#666" />
+              </TouchableOpacity>
+              {errors.diaSemana && <Text style={styles.errorText}>{errors.diaSemana}</Text>}
+            </View>
+          )}
 
           <View style={styles.timeRow}>
             <View style={[styles.inputContainer, styles.timeInput]}>
               <Text style={styles.inputLabel}>
-                Hora inicio <Text style={styles.required}>*</Text>
+                {isEditing ? 'Nueva Hora inicio' : 'Hora inicio'} <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
-                style={[styles.textInput, errors.horaInicio && styles.inputError]}
-                value={formData.horaInicio}
-                onChangeText={(value) => handleInputChange('horaInicio', value)}
+                style={[styles.textInput, errors[isEditing ? 'nuevaHoraInicio' : 'horaInicio'] && styles.inputError]}
+                value={isEditing ? formData.nuevaHoraInicio : formData.horaInicio}
+                onChangeText={(value) => handleInputChange(isEditing ? 'nuevaHoraInicio' : 'horaInicio', value)}
                 placeholder="08:00"
                 keyboardType="numeric"
                 maxLength={5}
               />
-              {errors.horaInicio && <Text style={styles.errorText}>{errors.horaInicio}</Text>}
+              {errors[isEditing ? 'nuevaHoraInicio' : 'horaInicio'] && <Text style={styles.errorText}>{errors[isEditing ? 'nuevaHoraInicio' : 'horaInicio']}</Text>}
             </View>
 
             <View style={[styles.inputContainer, styles.timeInput]}>
               <Text style={styles.inputLabel}>
-                Hora fin <Text style={styles.required}>*</Text>
+                {isEditing ? 'Nueva Hora fin' : 'Hora fin'} <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
-                style={[styles.textInput, errors.horaFin && styles.inputError]}
-                value={formData.horaFin}
-                onChangeText={(value) => handleInputChange('horaFin', value)}
+                style={[styles.textInput, errors[isEditing ? 'nuevaHoraFin' : 'horaFin'] && styles.inputError]}
+                value={isEditing ? formData.nuevaHoraFin : formData.horaFin}
+                onChangeText={(value) => handleInputChange(isEditing ? 'nuevaHoraFin' : 'horaFin', value)}
                 placeholder="17:00"
                 keyboardType="numeric"
                 maxLength={5}
               />
-              {errors.horaFin && <Text style={styles.errorText}>{errors.horaFin}</Text>}
+              {errors[isEditing ? 'nuevaHoraFin' : 'horaFin'] && <Text style={styles.errorText}>{errors[isEditing ? 'nuevaHoraFin' : 'horaFin']}</Text>}
             </View>
           </View>
         </View>
@@ -585,26 +742,22 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={() => navigation.goBack()}
-            disabled={loading}
+            disabled={false}
           >
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+            style={[styles.saveButton]}
             onPress={handleGuardarHorario}
-            disabled={loading || !formData.medicos_id || !formData.diaSemana || !formData.horaInicio || !formData.horaFin}
+            disabled={!formData.medicos_id || !formData.diaSemana || !formData.horaInicio || !formData.horaFin}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <>
-                <Ionicons name="checkmark" size={20} color="#FFF" />
-                <Text style={styles.saveButtonText}>
-                  {isEditing ? 'Actualizar Horario' : 'Guardar Horario'}
-                </Text>
-              </>
-            )}
+            <>
+              <Ionicons name="checkmark" size={20} color="#FFF" />
+              <Text style={styles.saveButtonText}>
+                {isEditing ? 'Actualizar Horario' : 'Guardar Horario'}
+              </Text>
+            </>
           </TouchableOpacity>
         </View>
 
@@ -612,6 +765,7 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
       </ScrollView>
 
       {renderDayPicker()}
+      {renderHorarioPicker()}
     </KeyboardAvoidingView>
   );
 }
@@ -620,17 +774,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
   },
   header: {
     backgroundColor: '#FFF',
@@ -864,6 +1007,37 @@ const styles = StyleSheet.create({
   },
   footerSpace: {
     height: 40,
+  },
+  horarioItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  horarioInfo: {
+    flex: 1,
+  },
+  horarioDia: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  horarioHoras: {
+    fontSize: 14,
+    color: '#666',
+  },
+  emptyState: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,

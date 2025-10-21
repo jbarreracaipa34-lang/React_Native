@@ -9,7 +9,7 @@ export default function DetalleMedicos({ route, navigation }) {
   const [usuario, setUsuario] = useState(null);
   const [medicoDetallado, setMedicoDetallado] = useState(medico);
   const [especialidad, setEspecialidad] = useState(null);
-  const [loading, setLoading] = useState(false);
+(false);
 
   useEffect(() => {
     loadUserData();
@@ -29,7 +29,6 @@ export default function DetalleMedicos({ route, navigation }) {
 
   const cargarDetallesCompletos = async () => {
     try {
-      setLoading(true);
       
       const medicosResponse = await AuthService.getMedicos();
       
@@ -52,7 +51,6 @@ export default function DetalleMedicos({ route, navigation }) {
     } catch (error) {
       console.error('Error cargando detalles:', error);
     } finally {
-      setLoading(false);
     }
   };
 

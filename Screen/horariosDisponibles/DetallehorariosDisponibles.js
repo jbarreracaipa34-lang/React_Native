@@ -7,7 +7,6 @@ import AuthService from '../../Src/Services/AuthService';
 export default function DetalleHorariosDisponibles({ route, navigation }) {
   const { medico } = route.params || {};
   const [usuario, setUsuario] = useState(null);
-  const [loading, setLoading] = useState(false);
 
   if (!medico) {
     return (

@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, Text, View, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import AuthService from '../../Src/Services/AuthService';
 
 export default function ListarPacientes({ navigation }) {
@@ -19,6 +20,28 @@ export default function ListarPacientes({ navigation }) {
       loadPacientes(usuario);
     }
   }, [usuario]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (usuario) {
+        setTimeout(() => {
+          loadPacientes(usuario);
+        }, 100);
+      }
+    }, [usuario])
+  );
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (usuario) {
+        setTimeout(() => {
+          loadPacientes(usuario);
+        }, 50);
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, usuario]);
 
   const loadUsuarioData = async () => {
     try {
@@ -159,7 +182,9 @@ export default function ListarPacientes({ navigation }) {
   };
 
   const handleEditarPaciente = (paciente) => {
-    navigation.navigate('Crear_EditarPacientes', { paciente: paciente });
+    navigation.navigate('Crear_EditarPacientes', { 
+      paciente: paciente
+    });
   };
 
   const handleEliminarPaciente = (paciente) => {
@@ -168,7 +193,14 @@ export default function ListarPacientes({ navigation }) {
       return;
     }
 
-    navigation.navigate('EliminarPacientes', { paciente: paciente });
+    navigation.navigate('EliminarPacientes', { 
+      paciente: paciente,
+      onGoBack: () => {
+        setTimeout(() => {
+          loadPacientes(usuario);
+        }, 200);
+      }
+    });
   };
 
   const formatDate = (dateString) => {
@@ -312,7 +344,14 @@ export default function ListarPacientes({ navigation }) {
         <View style={styles.accionesPaciente}>
           <TouchableOpacity
             style={[styles.botonAccion, { borderColor: '#1E88E5' }]}
-            onPress={() => navigation.navigate('DetallePacientes', { paciente: paciente })}
+            onPress={() => navigation.navigate('DetallePacientes', { 
+              paciente: paciente,
+              onGoBack: () => {
+                setTimeout(() => {
+                  loadPacientes(usuario);
+                }, 200);
+              }
+            })}
           >
             <Ionicons name="eye-outline" size={18} color="#1E88E5" />
           </TouchableOpacity>
@@ -532,17 +571,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
   },
   header: {
     backgroundColor: '#FFF',

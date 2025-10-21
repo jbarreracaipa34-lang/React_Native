@@ -3,10 +3,10 @@ import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity, Alert,
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import AuthService from '../../Src/Services/AuthService';
+import { useNotifications } from '../../Src/Hooks/useNotifications';
 
 export default function Crear_EditarEspecialidad({ navigation, route }) {
-  const [loading, setLoading] = useState(false);
-  const [loadingData, setLoadingData] = useState(true);
+  const { notifySpecialtyCreated } = useNotifications();
   const [usuario, setUsuario] = useState(null);
   const [formData, setFormData] = useState({
     nombre: '',
@@ -24,7 +24,6 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
 
   const loadInitialData = async () => {
     try {
-      setLoadingData(true);
       await loadUserData();
       
       if (isEditing && especialidadAEditar) {
@@ -33,7 +32,6 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
     } catch (error) {
       Alert.alert('Error', 'No se pudo cargar la informacion inicial');
     } finally {
-      setLoadingData(false);
     }
   };
 
@@ -138,7 +136,6 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
     }
 
     try {
-      setLoading(true);
 
       const especialidadData = {
         nombre: formData.nombre.trim(),
@@ -154,6 +151,17 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
       }
 
       if (response && (response.data || response.success)) {
+        // Enviar notificación solo para especialidades nuevas (no para ediciones)
+        if (!isEditing) {
+          const specialtyData = {
+            id: response.data?.id || 'nuevo',
+            nombre: formData.nombre.trim()
+          };
+          
+          console.log('🏥 Enviando notificación de especialidad creada...');
+          await notifySpecialtyCreated(specialtyData);
+        }
+        
         Alert.alert(
           'exito',
           isEditing ? 'Especialidad actualizada correctamente' : 'Especialidad creada correctamente',
@@ -211,7 +219,6 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
       
       Alert.alert('Error', errorMessage);
     } finally {
-      setLoading(false);
     }
   };
 
@@ -322,26 +329,22 @@ export default function Crear_EditarEspecialidad({ navigation, route }) {
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={() => navigation.goBack()}
-            disabled={loading}
+            disabled={false}
           >
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+            style={[styles.saveButton]}
             onPress={handleSubmit}
-            disabled={loading || !usuario || usuario.role !== 'admin'}
+            disabled={!usuario || usuario.role !== 'admin'}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <>
-                <Ionicons name="checkmark" size={20} color="#FFF" />
-                <Text style={styles.saveButtonText}>
-                  {isEditing ? 'Actualizar' : 'Guardar'}
-                </Text>
-              </>
-            )}
+            <>
+              <Ionicons name="checkmark" size={20} color="#FFF" />
+              <Text style={styles.saveButtonText}>
+                {isEditing ? 'Actualizar' : 'Guardar'}
+              </Text>
+            </>
           </TouchableOpacity>
         </View>
 
@@ -355,17 +358,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
   },
   header: {
     backgroundColor: '#FFF',

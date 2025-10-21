@@ -10,7 +10,6 @@ export default function ListarCitas({ navigation }) {
   const [citas, setCitas] = useState([]);
   const [filteredCitas, setFilteredCitas] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [citaExpandida, setCitaExpandida] = useState(null);
   const [pacienteInfo, setPacienteInfo] = useState(null);
@@ -131,11 +130,9 @@ export default function ListarCitas({ navigation }) {
       } else {
         setUsuario(null);
       }
-      setLoading(false);
       
     } catch (error) {
       setUsuario(null);
-      setLoading(false);
     }
   };
 
@@ -145,9 +142,6 @@ export default function ListarCitas({ navigation }) {
         return;
       }
 
-      if (showLoading) {
-        setLoading(true);
-      }
       
       let infoMedico = medicoInfoParam || medicoInfo;
       if (usuario.role === 'medico' && !infoMedico) {
@@ -232,9 +226,6 @@ export default function ListarCitas({ navigation }) {
       setCitas([]);
       Alert.alert('Error', 'No se pudieron cargar las citas: ' + error.message);
     } finally {
-      if (showLoading) {
-        setLoading(false);
-      }
     }
   };
 
@@ -663,17 +654,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
   },
   header: {
     backgroundColor: '#FFF',

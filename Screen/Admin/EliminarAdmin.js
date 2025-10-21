@@ -7,7 +7,6 @@ import AuthService from '../../Src/Services/AuthService';
 export default function EliminarAdmin({ route, navigation }) {
   const { admin } = route.params;
   const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
-  const [cargando, setCargando] = useState(false);
   const [usuario, setUsuario] = useState(null);
 
   useEffect(() => {
@@ -41,27 +40,30 @@ export default function EliminarAdmin({ route, navigation }) {
       return;
     }
 
-    setCargando(true);
     try {
       const response = await AuthService.eliminarAdmin(admin.id);
       
-      setMostrarConfirmacion(false);
-      
-      Alert.alert(
-        'Éxito',
-        'El administrador ha sido eliminado correctamente.',
-        [
-          { 
-            text: 'OK', 
-            onPress: () => {
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'ListarAdmins' }]
-              });
+      if (response.success) {
+        setMostrarConfirmacion(false);
+        
+        Alert.alert(
+          'Éxito',
+          'El administrador ha sido eliminado correctamente.',
+          [
+            { 
+              text: 'OK', 
+              onPress: () => {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'ListarAdmins' }]
+                });
+              }
             }
-          }
-        ]
-      );
+          ]
+        );
+      } else {
+        Alert.alert('Error', response.message || 'No se pudo eliminar el administrador');
+      }
     } catch (error) {
       console.error('Error al eliminar administrador:', error);
       
@@ -80,8 +82,6 @@ export default function EliminarAdmin({ route, navigation }) {
       }
 
       Alert.alert('Error', mensaje);
-    } finally {
-      setCargando(false);
     }
   };
 
@@ -172,7 +172,7 @@ export default function EliminarAdmin({ route, navigation }) {
             <TouchableOpacity
               style={styles.botonEliminar}
               onPress={() => setMostrarConfirmacion(true)}
-              disabled={cargando}
+              disabled={false}
             >
               <Ionicons name="trash-outline" size={20} color="#FFF" />
               <Text style={styles.textoBoton}>Eliminar Administrador</Text>
@@ -226,13 +226,6 @@ export default function EliminarAdmin({ route, navigation }) {
             <Text style={styles.confirmWarning}>
               Esta acción no se puede deshacer
             </Text>
-
-            {cargando ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#C62828" />
-                <Text style={styles.loadingText}>Eliminando administrador...</Text>
-              </View>
-            ) : (
               <View style={styles.botonesConfirm}>
                 <TouchableOpacity
                   style={styles.botonNo}
@@ -249,7 +242,6 @@ export default function EliminarAdmin({ route, navigation }) {
                   <Text style={styles.textoSi}>Sí, eliminar</Text>
                 </TouchableOpacity>
               </View>
-            )}
           </View>
         )}
       </ScrollView>
@@ -458,16 +450,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: 24,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    gap: 16,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '500',
   },
   botonesConfirm: {
     flexDirection: 'row',

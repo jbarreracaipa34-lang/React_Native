@@ -3,11 +3,13 @@ import { View, Text, TouchableOpacity, Alert, StyleSheet, ActivityIndicator} fro
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import AuthService from '../../Src/Services/AuthService';
+import { useNotifications } from '../../Src/Hooks/useNotifications';
 
 export default function EliminarCitas({ route, navigation }) {
   const { cita, onGoBack } = route.params;
   const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
-  const [cargando, setCargando] = useState(false);
+
+  const { notifyAppointmentCancelled, permissionsGranted } = useNotifications();
 
   useEffect(() => {
   }, []);
@@ -20,9 +22,22 @@ export default function EliminarCitas({ route, navigation }) {
       return;
     }
 
-    setCargando(true);
     try {
       const response = await AuthService.eliminarCita(citaId);
+      
+      if (permissionsGranted && response && response.success) {
+        const notificationData = {
+          id: cita.id,
+          fechaCita: cita.fechaCita,
+          horaCita: cita.horaCita,
+          medico_nombre: cita.medico_nombre,
+          medico_apellido: cita.medico_apellido,
+          paciente_nombre: cita.paciente_nombre,
+          paciente_apellido: cita.paciente_apellido,
+        };
+        
+        await notifyAppointmentCancelled(notificationData);
+      }
       
       setMostrarConfirmacion(false);
       
@@ -60,13 +75,24 @@ export default function EliminarCitas({ route, navigation }) {
 
       Alert.alert('Error', mensaje);
     } finally {
-      setCargando(false);
     }
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'No disponible';
-    const date = new Date(dateString);
+    
+    let date;
+    if (dateString.includes('T')) {
+      date = new Date(dateString);
+    } else {
+      // Para fechas sin hora, agregar T00:00:00 para evitar problemas de zona horaria
+      date = new Date(dateString + 'T00:00:00');
+    }
+    
+    if (isNaN(date.getTime())) {
+      return 'Fecha inválida';
+    }
+    
     return date.toLocaleDateString('es-ES', {
       weekday: 'long',
       day: '2-digit',
@@ -140,7 +166,7 @@ export default function EliminarCitas({ route, navigation }) {
             <TouchableOpacity
               style={styles.botonEliminar}
               onPress={() => setMostrarConfirmacion(true)}
-              disabled={cargando}
+              disabled={false}
             >
               <Ionicons name="trash-outline" size={20} color="#FFF" />
               <Text style={styles.textoBoton}>Eliminar Cita</Text>
@@ -164,13 +190,7 @@ export default function EliminarCitas({ route, navigation }) {
               Esta acción no se puede deshacer
             </Text>
 
-            {cargando ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#C62828" />
-                <Text style={styles.loadingText}>Eliminando cita...</Text>
-              </View>
-            ) : (
-              <View style={styles.botonesConfirm}>
+            <View style={styles.botonesConfirm}>
                 <TouchableOpacity
                   style={styles.botonNo}
                   onPress={() => setMostrarConfirmacion(false)}
@@ -186,7 +206,6 @@ export default function EliminarCitas({ route, navigation }) {
                   <Text style={styles.textoSi}>Eliminar</Text>
                 </TouchableOpacity>
               </View>
-            )}
           </View>
         )}
       </View>
@@ -309,16 +328,6 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginBottom: 32,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    gap: 16,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '500',
   },
   botonesConfirm: {
     flexDirection: 'row',

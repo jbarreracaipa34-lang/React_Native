@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, Text, View, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import AuthService from '../../Src/Services/AuthService';
 
 export default function ListarAdmins({ navigation }) {
@@ -19,6 +20,28 @@ export default function ListarAdmins({ navigation }) {
       loadAdmins();
     }
   }, [usuario]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (usuario) {
+        setTimeout(() => {
+          loadAdmins();
+        }, 100);
+      }
+    }, [usuario])
+  );
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (usuario) {
+        setTimeout(() => {
+          loadAdmins();
+        }, 50);
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, usuario]);
 
   const loadUsuarioData = async () => {
     try {
@@ -67,7 +90,14 @@ export default function ListarAdmins({ navigation }) {
       return;
     }
 
-    navigation.navigate('Crear_EditarAdmin', { admin: admin });
+    navigation.navigate('Crear_EditarAdmin', { 
+      admin: admin,
+      onGoBack: () => {
+        setTimeout(() => {
+          loadAdmins();
+        }, 200);
+      }
+    });
   };
 
   const handleEliminarAdmin = (admin) => {
@@ -76,7 +106,14 @@ export default function ListarAdmins({ navigation }) {
       return;
     }
 
-    navigation.navigate('EliminarAdmin', { admin: admin });
+    navigation.navigate('EliminarAdmin', { 
+      admin: admin,
+      onGoBack: () => {
+        setTimeout(() => {
+          loadAdmins();
+        }, 200);
+      }
+    });
   };
 
   const renderAccionesAdmin = (admin) => {
@@ -87,7 +124,14 @@ export default function ListarAdmins({ navigation }) {
         <View style={styles.accionesAdmin}>
           <TouchableOpacity
             style={[styles.botonAccion, { borderColor: '#1E88E5' }]}
-            onPress={() => navigation.navigate('DetalleAdmin', { admin: admin })}
+            onPress={() => navigation.navigate('DetalleAdmin', { 
+              admin: admin,
+              onGoBack: () => {
+                setTimeout(() => {
+                  loadAdmins();
+                }, 200);
+              }
+            })}
           >
             <Ionicons name="eye-outline" size={18} color="#1E88E5" />
           </TouchableOpacity>
@@ -167,7 +211,13 @@ export default function ListarAdmins({ navigation }) {
       {usuario?.role === 'admin' && (
         <TouchableOpacity
           style={styles.emptyButton}
-          onPress={() => navigation.navigate('Crear_EditarAdmin')}
+          onPress={() => navigation.navigate('Crear_EditarAdmin', {
+            onGoBack: () => {
+              setTimeout(() => {
+                loadAdmins();
+              }, 200);
+            }
+          })}
         >
           <Text style={styles.emptyButtonText}>Agregar primer administrador</Text>
         </TouchableOpacity>
@@ -203,7 +253,13 @@ export default function ListarAdmins({ navigation }) {
           {usuario?.role === 'admin' && (
             <TouchableOpacity
               style={styles.newButton}
-              onPress={() => navigation.navigate('Crear_EditarAdmin')}
+              onPress={() => navigation.navigate('Crear_EditarAdmin', {
+                onGoBack: () => {
+                  setTimeout(() => {
+                    loadAdmins();
+                  }, 200);
+                }
+              })}
             >
               <Ionicons name="add" size={20} color="#FFF" />
               <Text style={styles.newButtonText}>Nuevo</Text>
@@ -255,17 +311,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
   },
   header: {
     backgroundColor: '#FFF',

@@ -4,16 +4,14 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import AuthService from '../../Src/Services/AuthService';
+import { useNotifications } from '../../Src/Hooks/useNotifications';
 
 export default function Crear_EditarCita({ navigation, route }) {
-  const [loading, setLoading] = useState(false);
-  const [loadingData, setLoadingData] = useState(true);
   const [usuario, setUsuario] = useState(null);
   const [pacientes, setPacientes] = useState([]);
   const [medicos, setMedicos] = useState([]);
   const [pacienteInfo, setPacienteInfo] = useState(null);
   const [horariosDisponibles, setHorariosDisponibles] = useState([]);
-  const [loadingHorarios, setLoadingHorarios] = useState(false);
   const [citasExistentes, setCitasExistentes] = useState([]);
   const [formData, setFormData] = useState({
     pacientes_id: '',
@@ -28,6 +26,13 @@ export default function Crear_EditarCita({ navigation, route }) {
   const citaAEditar = route?.params?.cita;
   const isEditing = !!citaAEditar;
   const [ultimaConsultaHorarios, setUltimaConsultaHorarios] = useState({ medicoId: null });
+
+  const {
+    notifyAppointmentCreated,
+    notifyAppointmentUpdated,
+    scheduleAppointmentReminder,
+    permissionsGranted
+  } = useNotifications();
 
   useEffect(() => {
     loadInitialData();
@@ -102,7 +107,6 @@ export default function Crear_EditarCita({ navigation, route }) {
     }
 
     try {
-      setLoadingHorarios(true);
       const response = await AuthService.getHorariosDisponiblesPorMedico();
       const horariosData = response?.data || response || [];
       
@@ -157,7 +161,6 @@ export default function Crear_EditarCita({ navigation, route }) {
     } catch (error) {
       setHorariosDisponibles([]);
     } finally {
-      setLoadingHorarios(false);
     }
   };
 
@@ -188,7 +191,6 @@ export default function Crear_EditarCita({ navigation, route }) {
 
   const loadInitialData = async () => {
     try {
-      setLoadingData(true);
       await Promise.all([loadUserData(), loadPacientes(), loadMedicos()]);
       
       if (isEditing && citaAEditar) {
@@ -197,7 +199,6 @@ export default function Crear_EditarCita({ navigation, route }) {
     } catch (error) {
       Alert.alert('Error', 'No se pudo cargar la informacion inicial');
     } finally {
-      setLoadingData(false);
     }
   };
 
@@ -296,8 +297,10 @@ export default function Crear_EditarCita({ navigation, route }) {
   const cargarDatosCita = async () => {
     if (!citaAEditar) return;
 
+
     const horaFormateada = citaAEditar.horaCita?.split(':').slice(0, 2).join(':') || '';
     const observacionesProcesadas = String(citaAEditar.observaciones || '');
+
 
     const newFormData = {
       pacientes_id: String(citaAEditar.pacientes_id || ''),
@@ -474,7 +477,6 @@ export default function Crear_EditarCita({ navigation, route }) {
     }
 
     try {
-      setLoading(true);
       const observacionesProcessed = String(formData.observaciones || '').trim();
 
       const citaData = {
@@ -520,6 +522,32 @@ export default function Crear_EditarCita({ navigation, route }) {
         : await AuthService.crearCita(citaData);
 
       if (response && (response.data || response.success)) {
+        const appointmentData = response.data || response;
+        const medicoSeleccionado = medicos.find(m => m.id === parseInt(formData.medicos_id));
+        const pacienteSeleccionado = pacientes.find(p => p.id === parseInt(formData.pacientes_id));
+        
+        const notificationData = {
+          id: appointmentData.id || citaAEditar?.id,
+          fechaCita: formData.fechaCita,
+          horaCita: formData.horaCita,
+          medico_nombre: medicoSeleccionado?.nombre || citaAEditar?.medico_nombre,
+          medico_apellido: medicoSeleccionado?.apellido || citaAEditar?.medico_apellido,
+          paciente_nombre: pacienteSeleccionado?.nombre || citaAEditar?.paciente_nombre,
+          paciente_apellido: pacienteSeleccionado?.apellido || citaAEditar?.paciente_apellido,
+        };
+
+        if (permissionsGranted) {
+          if (isEditing) {
+            await notifyAppointmentUpdated(notificationData);
+          } else {
+            await notifyAppointmentCreated(notificationData);
+            const appointmentDate = new Date(`${formData.fechaCita}T${formData.horaCita}`);
+            if (appointmentDate > new Date()) {
+              await scheduleAppointmentReminder(notificationData);
+            }
+          }
+        }
+
         Alert.alert(
           'Exito',
           isEditing ? 'Cita actualizada correctamente' : 'Cita creada correctamente',
@@ -551,7 +579,6 @@ export default function Crear_EditarCita({ navigation, route }) {
       
       Alert.alert('Error', errorMessage);
     } finally {
-      setLoading(false);
     }
   };
 
@@ -636,11 +663,10 @@ export default function Crear_EditarCita({ navigation, route }) {
                 horariosDisponibles.find(h => h.horaInicio === formData.horaCita)?.value || '' : ''}
               onValueChange={(value) => handleInputChange('horaCita', value)}
               style={[styles.picker, disabled && styles.pickerDisabled]}
-              enabled={!disabled && !loadingHorarios}
+              enabled={!disabled}
             >
               <Picker.Item 
-                label={loadingHorarios ? "Cargando horarios..." : 
-                       horariosLibres.length === 0 ? "No hay horarios disponibles" : "Seleccionar horario"} 
+                label={horariosLibres.length === 0 ? "No hay horarios disponibles" : "Seleccionar horario"} 
                 value="" 
               />
               {horariosLibres.map((horario) => (
@@ -652,7 +678,7 @@ export default function Crear_EditarCita({ navigation, route }) {
         
         {errors['horaCita'] && <Text style={styles.errorText}>{errors['horaCita']}</Text>}
         
-        {mostrarPicker && horariosLibres.length === 0 && !loadingHorarios && (
+        {mostrarPicker && horariosLibres.length === 0 && (
           <Text style={styles.infoTextSmall}>
             {horariosDisponibles.length === 0 
               ? "Este medico no tiene horarios configurados"
@@ -800,15 +826,13 @@ export default function Crear_EditarCita({ navigation, route }) {
           )}
         </View>
 
-        {(usuario?.role !== 'paciente' || isEditing) && (
+        {(usuario?.role === 'admin' || usuario?.role === 'medico') && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="document-text-outline" size={20} color="#2196F3" />
               <Text style={styles.sectionTitle}>
                 Observaciones
-                {(usuario?.role === 'admin' || usuario?.role === 'medico') && (
-                  <Text style={styles.optionalText}> (Opcional)</Text>
-                )}
+                <Text style={styles.optionalText}> (Opcional)</Text>
               </Text>
             </View>
 
@@ -817,9 +841,7 @@ export default function Crear_EditarCita({ navigation, route }) {
               'observaciones', 
               usuario?.role === 'admin' 
                 ? 'Observaciones adicionales (opcional)...' 
-                : usuario?.role === 'medico' 
-                ? 'Notas medicas o instrucciones (opcional)...'
-                : 'Ingrese observaciones adicionales...', 
+                : 'Notas medicas o instrucciones (opcional)...', 
               'default', 
               true
             )}
@@ -836,25 +858,21 @@ export default function Crear_EditarCita({ navigation, route }) {
         )}
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()} disabled={loading}>
+          <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()} disabled={false}>
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+            style={[styles.saveButton]}
             onPress={handleSubmit}
-            disabled={loading || !usuario}
+            disabled={!usuario}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <>
-                <Ionicons name="checkmark" size={20} color="#FFF" />
-                <Text style={styles.saveButtonText}>
-                  {isEditing ? 'Actualizar' : 'Guardar'}
-                </Text>
-              </>
-            )}
+            <>
+              <Ionicons name="checkmark" size={20} color="#FFF" />
+              <Text style={styles.saveButtonText}>
+                {isEditing ? 'Actualizar' : 'Guardar'}
+              </Text>
+            </>
           </TouchableOpacity>
         </View>
 
@@ -868,17 +886,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-  },
-  loadingText: {
-    color: '#2196F3',
-    fontStyle: 'italic',
-    fontSize: 12,
   },
   infoTextSmall: {
     fontSize: 12,

@@ -8,7 +8,7 @@ export default function DetallePacientes({ route, navigation }) {
   const { paciente } = route.params;
   const [usuario, setUsuario] = useState(null);
   const [pacienteDetallado, setPacienteDetallado] = useState(paciente);
-  const [loading, setLoading] = useState(false);
+(false);
 
   useEffect(() => {
     loadUserData();
@@ -28,7 +28,6 @@ export default function DetallePacientes({ route, navigation }) {
 
   const cargarDetallesCompletos = async () => {
     try {
-      setLoading(true);
       const pacientesResponse = await AuthService.getPacientes();
       
       if (pacientesResponse?.data) {
@@ -43,7 +42,6 @@ export default function DetallePacientes({ route, navigation }) {
     } catch (error) {
       console.error('Error cargando detalles:', error);
     } finally {
-      setLoading(false);
     }
   };
 

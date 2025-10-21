@@ -4,13 +4,14 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import AuthService from '../../Src/Services/AuthService';
+import { useNotifications } from '../../Src/Hooks/useNotifications';
 
 export default function Crear_EditarMedicos({ navigation, route }) {
-  const [loading, setLoading] = useState(false);
   const [usuario, setUsuario] = useState(null);
   const [especialidades, setEspecialidades] = useState([]);
-  const [loadingEspecialidades, setLoadingEspecialidades] = useState(false);
   const [especialidadesError, setEspecialidadesError] = useState(null);
+
+  const { notifyUserCreated, permissionsGranted } = useNotifications();
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -47,7 +48,6 @@ export default function Crear_EditarMedicos({ navigation, route }) {
 
   const loadEspecialidades = async () => {
     try {
-      setLoadingEspecialidades(true);
       setEspecialidadesError(null);
       const response = await AuthService.getEspecialidades();
       if (response.success && response.data) {
@@ -86,12 +86,12 @@ export default function Crear_EditarMedicos({ navigation, route }) {
           },
           { 
             text: 'Continuar', 
-            onPress: () => setLoadingEspecialidades(false) 
+            onPress: () => {
+            }
           }
         ]
       );
     } finally {
-      setLoadingEspecialidades(false);
     }
   };
 
@@ -207,7 +207,6 @@ export default function Crear_EditarMedicos({ navigation, route }) {
 
   const proceedWithSubmit = async () => {
     try {
-      setLoading(true);
 
       const medicoData = {
         nombre: formData.nombre,
@@ -232,6 +231,11 @@ export default function Crear_EditarMedicos({ navigation, route }) {
 
 
       if (response && (response.data || response.success)) {
+        if (!isEditing && permissionsGranted) {
+          const doctorData = response.data || response;
+          await notifyUserCreated(doctorData, 'medico');
+        }
+
         Alert.alert(
           'exito',
           isEditing ? 'Medico actualizado correctamente' : 'Medico creado correctamente',
@@ -291,7 +295,6 @@ export default function Crear_EditarMedicos({ navigation, route }) {
       
       Alert.alert('Error', errorMessage);
     } finally {
-      setLoading(false);
     }
   };
 
@@ -339,12 +342,7 @@ export default function Crear_EditarMedicos({ navigation, route }) {
         {especialidades.length > 0 && <Text style={styles.required}> *</Text>}
       </Text>
       
-      {loadingEspecialidades ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator color="#2196F3" />
-          <Text style={styles.loadingText}>Cargando especialidades...</Text>
-        </View>
-      ) : especialidadesError === 'forbidden' ? (
+      {especialidadesError === 'forbidden' ? (
         <View style={styles.errorContainer}>
           <Ionicons name="warning-outline" size={20} color="#FF9800" />
           <Text style={styles.warningText}>
@@ -457,26 +455,22 @@ export default function Crear_EditarMedicos({ navigation, route }) {
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={() => navigation.goBack()}
-            disabled={loading}
+            disabled={false}
           >
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+            style={[styles.saveButton]}
             onPress={handleSubmit}
-            disabled={loading || !usuario}
+            disabled={!usuario}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <>
-                <Ionicons name="checkmark" size={20} color="#FFF" />
-                <Text style={styles.saveButtonText}>
-                  {isEditing ? 'Actualizar' : 'Guardar'}
-                </Text>
-              </>
-            )}
+            <>
+              <Ionicons name="checkmark" size={20} color="#FFF" />
+              <Text style={styles.saveButtonText}>
+                {isEditing ? 'Actualizar' : 'Guardar'}
+              </Text>
+            </>
           </TouchableOpacity>
         </View>
 
@@ -596,20 +590,6 @@ const styles = StyleSheet.create({
     color: '#F44336',
     marginTop: 4,
   },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  loadingText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#666',
-  },
   errorContainer: {
     padding: 16,
     backgroundColor: '#FFF3E0',
@@ -671,17 +651,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 10,
     fontWeight: '600',
-  },
-  loadingUserContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-  },
-  loadingUserText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#666',
   },
   actionButtons: {
     flexDirection: 'row',
