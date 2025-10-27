@@ -3,8 +3,7 @@ import axios from 'axios';
 import { Alert } from 'react-native';
 import NavigationService from './NavegationService';
 
-//const API_BASE_URL = 'https://avianna-surfy-mikaela.ngrok-free.dev/api';
-const API_BASE_URL = 'http://192.168.1.6:8000/api';
+const API_BASE_URL = 'https://lue-premoral-rosa.ngrok-free.dev/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -231,6 +230,19 @@ class AuthService {
       };
     }
   }
+  async cancelarCita(id) {
+    try {
+      const response = await api.put(`/cancelarCitas/${id}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error canceling cita:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al cancelar cita',
+        errors: error.response?.data?.errors || null
+      };
+    }
+  }
   async getEspecialidades() {
     try {
       const response = await api.get('/especialidades');
@@ -344,11 +356,7 @@ class AuthService {
       return { success: true, data: response.data };
     } catch (error) {
       console.error('Error deleting horario:', error);
-      return {
-        success: false,
-        message: error.response?.data?.message || 'Error al eliminar horario',
-        errors: error.response?.data?.errors || null
-      };
+      throw error; // Re-lanzar el error para que el frontend pueda manejar el status 409
     }
   }
 

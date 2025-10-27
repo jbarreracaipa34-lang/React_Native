@@ -133,6 +133,17 @@ export default function EliminarHorariosDisponibles({ route, navigation }) {
         exitosos++;
       } catch (error) {
         console.error(`✗ Error al eliminar horario ${horarioId}:`, error.message);
+        
+        if (error.response?.status === 409) {
+          Alert.alert(
+            'Error',
+            'Eliminar primero la cita con este horario para ahí sí poder eliminar el horario',
+            [{ text: 'OK' }]
+          );
+          setDeleting(false);
+          return; 
+        }
+        
         errores++;
         erroresDetalle.push(`Horario ID ${horarioId}: ${error.message}`);
       }

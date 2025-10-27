@@ -15,6 +15,9 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
   const [horariosExistentes, setHorariosExistentes] = useState([]);
   const [horarioSeleccionado, setHorarioSeleccionado] = useState(null);
   const [showHorarioPicker, setShowHorarioPicker] = useState(false);
+  const [showMedicoPicker, setShowMedicoPicker] = useState(false);
+  const [showHoraInicioPicker, setShowHoraInicioPicker] = useState(false);
+  const [showHoraFinPicker, setShowHoraFinPicker] = useState(false);
   const [formData, setFormData] = useState({
     medicos_id: '',
     diaSemana: '',
@@ -36,6 +39,24 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
     { key: 'V', label: 'Viernes', color: '#00796B' },
     { key: 'S', label: 'Sabado', color: '#F9A825' }
   ];
+
+  const generarOpcionesHora = () => {
+    const horas = [];
+    for (let hora = 6; hora <= 22; hora++) {
+      for (let minuto = 0; minuto < 60; minuto += 30) {
+        const horaStr = hora.toString().padStart(2, '0');
+        const minutoStr = minuto.toString().padStart(2, '0');
+        const tiempo = `${horaStr}:${minutoStr}`;
+        horas.push({
+          value: tiempo,
+          label: tiempo
+        });
+      }
+    }
+    return horas;
+  };
+
+  const opcionesHora = generarOpcionesHora();
 
   useEffect(() => {
     loadInitialData();
@@ -505,6 +526,99 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
     </Modal>
   );
 
+  const renderMedicoPicker = () => (
+    <Modal
+      visible={showMedicoPicker}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowMedicoPicker(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Seleccionar Médico</Text>
+            <TouchableOpacity
+              style={styles.modalClose}
+              onPress={() => setShowMedicoPicker(false)}
+            >
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.modalScrollView}>
+            {medicos.map((medico) => (
+              <TouchableOpacity
+                key={medico.id}
+                style={styles.medicoItem}
+                onPress={() => {
+                  handleInputChange('medicos_id', medico.id);
+                  setShowMedicoPicker(false);
+                }}
+              >
+                <View style={styles.medicoInfo}>
+                  <Text style={styles.medicoNombre}>
+                    Dr. {medico.nombre} {medico.apellido}
+                  </Text>
+                  <Text style={styles.medicoEspecialidad}>
+                    {medico.especialidad}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#666" />
+              </TouchableOpacity>
+            ))}
+            
+            {medicos.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No hay médicos disponibles</Text>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderHoraPicker = (title, field, showPicker, setShowPicker) => (
+    <Modal
+      visible={showPicker}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowPicker(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{title}</Text>
+            <TouchableOpacity
+              style={styles.modalClose}
+              onPress={() => setShowPicker(false)}
+            >
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.modalScrollView}>
+            {opcionesHora.map((hora) => (
+              <TouchableOpacity
+                key={hora.value}
+                style={styles.horaItem}
+                onPress={() => {
+                  handleInputChange(field, hora.value);
+                  setShowPicker(false);
+                }}
+              >
+                <Text style={styles.horaText}>{hora.label}</Text>
+                {formData[field] === hora.value && (
+                  <Ionicons name="checkmark" size={20} color="#2196F3" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+
   const renderHorarioPicker = () => (
     <Modal
       visible={showHorarioPicker}
@@ -664,24 +778,64 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
           {renderMedicoSelector()}
 
           {isEditing ? (
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>
-                Seleccionar Horario a Editar <Text style={styles.required}>*</Text>
-              </Text>
-              <TouchableOpacity
-                style={[styles.selectInput, errors.horarioSeleccionado && styles.inputError]}
-                onPress={() => setShowHorarioPicker(true)}
-              >
-                <Text style={[styles.selectInputText, !horarioSeleccionado && styles.placeholder]}>
-                  {horarioSeleccionado 
-                    ? `${horarioSeleccionado.diaSemana} - ${horarioSeleccionado.horaInicio} a ${horarioSeleccionado.horaFin}`
-                    : 'Seleccionar horario'
-                  }
-                </Text>
-                <Ionicons name="chevron-down" size={20} color="#666" />
-              </TouchableOpacity>
-              {errors.horarioSeleccionado && <Text style={styles.errorText}>{errors.horarioSeleccionado}</Text>}
-            </View>
+            <>
+              {usuario?.role === 'admin' ? (
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>
+                    Seleccionar Médico <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.selectInput, errors.medicos_id && styles.inputError]}
+                    onPress={() => setShowMedicoPicker(true)}
+                  >
+                    <Text style={[styles.selectInputText, !formData.medicos_id && styles.placeholder]}>
+                      {formData.medicos_id 
+                        ? medicos.find(m => m.id === parseInt(formData.medicos_id))?.nombre + ' ' + medicos.find(m => m.id === parseInt(formData.medicos_id))?.apellido
+                        : 'Seleccionar médico'
+                      }
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color="#666" />
+                  </TouchableOpacity>
+                  {errors.medicos_id && <Text style={styles.errorText}>{errors.medicos_id}</Text>}
+                </View>
+              ) : (
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>
+                    Médico
+                  </Text>
+                  <View style={[styles.selectInput, styles.inputDisabled]}>
+                    <Text style={styles.selectInputText}>
+                      Dr. {medicoActual?.nombre || ''} {medicoActual?.apellido || ''}
+                    </Text>
+                    <Ionicons name="lock-closed" size={20} color="#999" />
+                  </View>
+                  <Text style={styles.infoTextSmall}>
+                    Solo puedes editar tus propios horarios
+                  </Text>
+                </View>
+              )}
+              
+              {formData.medicos_id && (
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>
+                    Seleccionar Horario a Editar <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.selectInput, errors.horarioSeleccionado && styles.inputError]}
+                    onPress={() => setShowHorarioPicker(true)}
+                  >
+                    <Text style={[styles.selectInputText, !horarioSeleccionado && styles.placeholder]}>
+                      {horarioSeleccionado 
+                        ? `${horarioSeleccionado.diaSemana} - ${horarioSeleccionado.horaInicio} a ${horarioSeleccionado.horaFin}`
+                        : 'Seleccionar horario'
+                      }
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color="#666" />
+                  </TouchableOpacity>
+                  {errors.horarioSeleccionado && <Text style={styles.errorText}>{errors.horarioSeleccionado}</Text>}
+                </View>
+              )}
+            </>
           ) : (
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>
@@ -708,14 +862,15 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
               <Text style={styles.inputLabel}>
                 {isEditing ? 'Nueva Hora inicio' : 'Hora inicio'} <Text style={styles.required}>*</Text>
               </Text>
-              <TextInput
-                style={[styles.textInput, errors[isEditing ? 'nuevaHoraInicio' : 'horaInicio'] && styles.inputError]}
-                value={isEditing ? formData.nuevaHoraInicio : formData.horaInicio}
-                onChangeText={(value) => handleInputChange(isEditing ? 'nuevaHoraInicio' : 'horaInicio', value)}
-                placeholder="08:00"
-                keyboardType="numeric"
-                maxLength={5}
-              />
+              <TouchableOpacity
+                style={[styles.selectInput, errors[isEditing ? 'nuevaHoraInicio' : 'horaInicio'] && styles.inputError]}
+                onPress={() => setShowHoraInicioPicker(true)}
+              >
+                <Text style={[styles.selectInputText, !(isEditing ? formData.nuevaHoraInicio : formData.horaInicio) && styles.placeholder]}>
+                  {isEditing ? formData.nuevaHoraInicio || 'Seleccionar hora' : formData.horaInicio || 'Seleccionar hora'}
+                </Text>
+                <Ionicons name="time-outline" size={20} color="#666" />
+              </TouchableOpacity>
               {errors[isEditing ? 'nuevaHoraInicio' : 'horaInicio'] && <Text style={styles.errorText}>{errors[isEditing ? 'nuevaHoraInicio' : 'horaInicio']}</Text>}
             </View>
 
@@ -723,14 +878,15 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
               <Text style={styles.inputLabel}>
                 {isEditing ? 'Nueva Hora fin' : 'Hora fin'} <Text style={styles.required}>*</Text>
               </Text>
-              <TextInput
-                style={[styles.textInput, errors[isEditing ? 'nuevaHoraFin' : 'horaFin'] && styles.inputError]}
-                value={isEditing ? formData.nuevaHoraFin : formData.horaFin}
-                onChangeText={(value) => handleInputChange(isEditing ? 'nuevaHoraFin' : 'horaFin', value)}
-                placeholder="17:00"
-                keyboardType="numeric"
-                maxLength={5}
-              />
+              <TouchableOpacity
+                style={[styles.selectInput, errors[isEditing ? 'nuevaHoraFin' : 'horaFin'] && styles.inputError]}
+                onPress={() => setShowHoraFinPicker(true)}
+              >
+                <Text style={[styles.selectInputText, !(isEditing ? formData.nuevaHoraFin : formData.horaFin) && styles.placeholder]}>
+                  {isEditing ? formData.nuevaHoraFin || 'Seleccionar hora' : formData.horaFin || 'Seleccionar hora'}
+                </Text>
+                <Ionicons name="time-outline" size={20} color="#666" />
+              </TouchableOpacity>
               {errors[isEditing ? 'nuevaHoraFin' : 'horaFin'] && <Text style={styles.errorText}>{errors[isEditing ? 'nuevaHoraFin' : 'horaFin']}</Text>}
             </View>
           </View>
@@ -764,6 +920,9 @@ export default function Crear_EditarHorariosDisponibles({ navigation, route }) {
 
       {renderDayPicker()}
       {renderHorarioPicker()}
+      {renderMedicoPicker()}
+      {renderHoraPicker('Seleccionar Hora de Inicio', isEditing ? 'nuevaHoraInicio' : 'horaInicio', showHoraInicioPicker, setShowHoraInicioPicker)}
+      {renderHoraPicker('Seleccionar Hora de Fin', isEditing ? 'nuevaHoraFin' : 'horaFin', showHoraFinPicker, setShowHoraFinPicker)}
     </KeyboardAvoidingView>
   );
 }
@@ -1092,5 +1251,53 @@ const styles = StyleSheet.create({
   dayOptionTextSelected: {
     fontWeight: '600',
     color: '#2196F3',
+  },
+  medicoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  medicoInfo: {
+    flex: 1,
+  },
+  medicoNombre: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  medicoEspecialidad: {
+    fontSize: 14,
+    color: '#666',
+  },
+  modalScrollView: {
+    maxHeight: 400,
+  },
+  inputDisabled: {
+    backgroundColor: '#F5F5F5',
+    color: '#999',
+  },
+  infoTextSmall: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  horaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  horaText: {
+    fontSize: 16,
+    color: '#333',
   },
 });

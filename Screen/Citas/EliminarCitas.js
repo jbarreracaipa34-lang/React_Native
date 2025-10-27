@@ -7,14 +7,16 @@ import { useNotifications } from '../../Src/Hooks/useNotifications';
 
 export default function EliminarCitas({ route, navigation }) {
   const { cita, onGoBack } = route.params;
+  const [mostrarOpciones, setMostrarOpciones] = useState(false);
   const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
+  const [accionSeleccionada, setAccionSeleccionada] = useState(null);
 
   const { notifyAppointmentCancelled, permissionsGranted } = useNotifications();
 
   useEffect(() => {
   }, []);
 
-  const handleConfirmarEliminar = async () => {
+  const handleConfirmarAccion = async () => {
     const citaId = cita?.id;
         
     if (!citaId) {
@@ -23,7 +25,21 @@ export default function EliminarCitas({ route, navigation }) {
     }
 
     try {
-      const response = await AuthService.eliminarCita(citaId);
+      let response;
+      let mensaje;
+      
+      if (accionSeleccionada === 'cancelar') {
+        response = await AuthService.cancelarCita(citaId);
+        mensaje = 'La cita ha sido cancelada correctamente.';
+      } else {
+        response = await AuthService.eliminarCita(citaId);
+        mensaje = 'La cita ha sido cancelada y eliminada correctamente.';
+      }
+      
+      if (!response.success) {
+        Alert.alert('Error', response.message || 'No se pudo completar la acción');
+        return;
+      }
       
       if (permissionsGranted && response && response.success) {
         const notificationData = {
@@ -43,7 +59,7 @@ export default function EliminarCitas({ route, navigation }) {
       
       Alert.alert(
         'Éxito',
-        'La cita ha sido eliminada correctamente.',
+        mensaje,
         [
           { 
             text: 'OK', 
@@ -57,15 +73,15 @@ export default function EliminarCitas({ route, navigation }) {
         ]
       );
     } catch (error) {
-      console.error('Error al eliminar la cita:', error);
+      console.error('Error al procesar la cita:', error);
       
-      let mensaje = 'No se pudo eliminar la cita. Inténtelo de nuevo.';
+      let mensaje = 'No se pudo completar la acción. Inténtelo de nuevo.';
       
       if (error.response) {
         if (error.response.status === 404) {
           mensaje = 'La cita ya no existe.';
         } else if (error.response.status === 403) {
-          mensaje = 'No tienes permisos para eliminar esta cita.';
+          mensaje = 'No tienes permisos para realizar esta acción.';
         } else if (error.response.data?.message) {
           mensaje = error.response.data.message;
         }
@@ -110,7 +126,7 @@ export default function EliminarCitas({ route, navigation }) {
       <StatusBar style="dark" />
       
       <View style={styles.content}>
-        {!mostrarConfirmacion ? (
+        {!mostrarOpciones && !mostrarConfirmacion ? (
           <View style={styles.infoContainer}>
             <View style={styles.iconContainer}>
               <View style={styles.iconCircle}>
@@ -164,16 +180,66 @@ export default function EliminarCitas({ route, navigation }) {
 
             <TouchableOpacity
               style={styles.botonEliminar}
-              onPress={() => setMostrarConfirmacion(true)}
+              onPress={() => setMostrarOpciones(true)}
               disabled={false}
             >
               <Ionicons name="trash-outline" size={20} color="#FFF" />
-              <Text style={styles.textoBoton}>Eliminar Cita</Text>
+              <Text style={styles.textoBoton}>Cancelar/Eliminar Cita</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.botonCancelar}
               onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.textoCancelar}>Volver</Text>
+            </TouchableOpacity>
+          </View>
+        ) : !mostrarConfirmacion ? (
+          <View style={styles.opcionesContainer}>
+            <View style={styles.iconInfo}>
+              <Ionicons name="information-circle" size={64} color="#2196F3" />
+            </View>
+            
+            <Text style={styles.opcionesTitle}>¿Qué desea hacer?</Text>
+            <Text style={styles.opcionesSubtitle}>
+              Seleccione una opción para la cita
+            </Text>
+
+            <TouchableOpacity
+              style={styles.opcionButton}
+              onPress={() => {
+                setAccionSeleccionada('cancelar');
+                setMostrarConfirmacion(true);
+              }}
+            >
+              <Ionicons name="close-circle-outline" size={24} color="#F57C00" />
+              <View style={styles.opcionTextContainer}>
+                <Text style={styles.opcionTitle}>Solo Cancelar</Text>
+                <Text style={styles.opcionDescription}>
+                  La cita se marcará como cancelada pero permanecerá en el historial
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.opcionButton, styles.opcionButtonEliminar]}
+              onPress={() => {
+                setAccionSeleccionada('eliminar');
+                setMostrarConfirmacion(true);
+              }}
+            >
+              <Ionicons name="trash-outline" size={24} color="#D32F2F" />
+              <View style={styles.opcionTextContainer}>
+                <Text style={styles.opcionTitle}>Cancelar y Eliminar</Text>
+                <Text style={styles.opcionDescription}>
+                  La cita se cancelará y será eliminada del historial
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.botonCancelar}
+              onPress={() => setMostrarOpciones(false)}
             >
               <Text style={styles.textoCancelar}>Volver</Text>
             </TouchableOpacity>
@@ -184,25 +250,38 @@ export default function EliminarCitas({ route, navigation }) {
               <Ionicons name="warning" size={64} color="#EF6C00" />
             </View>
             
-            <Text style={styles.confirmTitle}>¿Eliminar Cita?</Text>
+            <Text style={styles.confirmTitle}>
+              {accionSeleccionada === 'cancelar' ? '¿Cancelar Cita?' : '¿Eliminar Cita?'}
+            </Text>
             <Text style={styles.confirmSubtitle}>
-              Esta acción no se puede deshacer
+              {accionSeleccionada === 'cancelar' 
+                ? 'La cita será marcada como cancelada' 
+                : 'Esta acción no se puede deshacer'}
             </Text>
 
             <View style={styles.botonesConfirm}>
                 <TouchableOpacity
                   style={styles.botonNo}
-                  onPress={() => setMostrarConfirmacion(false)}
+                  onPress={() => {
+                    setMostrarConfirmacion(false);
+                    setAccionSeleccionada(null);
+                  }}
                 >
                   <Text style={styles.textoNo}>Cancelar</Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity
                   style={styles.botonSi}
-                  onPress={handleConfirmarEliminar}
+                  onPress={handleConfirmarAccion}
                 >
-                  <Ionicons name="trash" size={18} color="#FFF" />
-                  <Text style={styles.textoSi}>Eliminar</Text>
+                  <Ionicons 
+                    name={accionSeleccionada === 'cancelar' ? 'close-circle' : 'trash'} 
+                    size={18} 
+                    color="#FFF" 
+                  />
+                  <Text style={styles.textoSi}>
+                    {accionSeleccionada === 'cancelar' ? 'Confirmar' : 'Eliminar'}
+                  </Text>
                 </TouchableOpacity>
               </View>
           </View>
@@ -360,5 +439,62 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  opcionesContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+  },
+  iconInfo: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#E3F2FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  opcionesTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  opcionesSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  opcionButton: {
+    width: '100%',
+    backgroundColor: '#FFF7E6',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFE0B2',
+  },
+  opcionButtonEliminar: {
+    backgroundColor: '#FFEBEE',
+    borderColor: '#FFCDD2',
+  },
+  opcionTextContainer: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  opcionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  opcionDescription: {
+    fontSize: 13,
+    color: '#666',
   },
 });

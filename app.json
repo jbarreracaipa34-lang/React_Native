@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "AppEPS",
-    "slug": "AppEPS",
+    "name": "Citas Médicas",
+    "slug": "citas-medicas-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -28,7 +28,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "614901db-09b5-4c4e-822a-5b18387f88c1"
+        "projectId": "9210431a-37d4-4cf8-9959-3177751e10f0"
       }
     }
   }

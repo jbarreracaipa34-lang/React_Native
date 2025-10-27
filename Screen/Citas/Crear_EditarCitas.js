@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ActivityIndicator} from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ActivityIndicator, Modal} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -22,8 +22,10 @@ export default function Crear_EditarCita({ navigation, route }) {
     observaciones: ''
   });
   const [errors, setErrors] = useState({});
+  const [showDatePicker, setShowDatePicker] = useState(false);
   
   const citaAEditar = route?.params?.cita;
+  const medicoParam = route?.params?.medico;
   const isEditing = !!citaAEditar;
   const [ultimaConsultaHorarios, setUltimaConsultaHorarios] = useState({ medicoId: null });
 
@@ -335,11 +337,26 @@ export default function Crear_EditarCita({ navigation, route }) {
         newFormData.medicos_id = String(usuario.id);
       }
       
+      if (medicoParam) {
+        const medicoEncontrado = medicos.find(m => 
+          m.nombre === medicoParam.nombre && m.apellido === medicoParam.apellido
+        );
+        
+        if (medicoEncontrado) {
+          newFormData.medicos_id = String(medicoEncontrado.id);
+        } else if (medicoParam.id) {
+          newFormData.medicos_id = String(medicoParam.id);
+        }
+      }
+      
       return newFormData;
     });
   };
 
   const handleInputChange = (field, value) => {
+    if (isFieldDisabled(field)) {
+      return;
+    }
     if (isEditing && usuario?.role === 'medico' && field !== 'observaciones' && field !== 'estado') {
       return;
     }
@@ -361,6 +378,8 @@ export default function Crear_EditarCita({ navigation, route }) {
       const horarioSeleccionado = horariosDisponibles.find(h => h.value === value);
       if (horarioSeleccionado) {
         const fechaParaCita = obtenerProximaFechaPorDia(horarioSeleccionado.dia);
+        
+        
         setFormData(prev => ({
           ...prev,
           fechaCita: fechaParaCita,
@@ -370,6 +389,7 @@ export default function Crear_EditarCita({ navigation, route }) {
       return;
     }
 
+
     setFormData(prev => ({ ...prev, [field]: processedValue }));
     
     if (errors[field]) {
@@ -377,9 +397,44 @@ export default function Crear_EditarCita({ navigation, route }) {
     }
   };
 
+  const verificarCompatibilidadFechaHorario = (fecha, horaCita) => {
+    if (!fecha || !horaCita) return true;
+    
+    const [year, month, day] = fecha.split('-').map(Number);
+    const fechaObj = new Date(year, month - 1, day);
+    
+    const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+    const diaFecha = diasSemana[fechaObj.getDay()];
+    
+    const horarioSeleccionado = horariosDisponibles.find(h => h.horaInicio === horaCita);
+    
+    if (!horarioSeleccionado) {
+      return true;
+    }
+    
+    const diaHorario = horarioSeleccionado.dia;
+    
+    return diaFecha === diaHorario;
+  };
+
+  const obtenerNombreDiaCompleto = (diaAbrev) => {
+    const diasCompletos = {
+      'Lun': 'Lunes',
+      'Mar': 'Martes', 
+      'Mie': 'Miércoles',
+      'Jue': 'Jueves',
+      'Vie': 'Viernes',
+      'Sab': 'Sábado',
+      'Dom': 'Domingo'
+    };
+    return diasCompletos[diaAbrev] || diaAbrev;
+  };
+
   const obtenerProximaFechaPorDia = (diaNombre) => {
     const diasSemana = { 'Lun': 1, 'Mar': 2, 'Mie': 3, 'Jue': 4, 'Vie': 5, 'Sab': 6, 'Dom': 0 };
     const hoy = new Date();
+    hoy.setHours(12, 0, 0, 0);
+    
     const diaObjetivo = diasSemana[diaNombre];
     const diaActual = hoy.getDay();
     
@@ -392,8 +447,19 @@ export default function Crear_EditarCita({ navigation, route }) {
       diasHastaObjetivo = 7;
     }
     
+    if (diasHastaObjetivo < 2) {
+      diasHastaObjetivo += 7;
+    }
+    
     const fechaObjetivo = new Date(hoy);
     fechaObjetivo.setDate(hoy.getDate() + diasHastaObjetivo);
+    
+    const diaCalculado = fechaObjetivo.getDay();
+    
+    if (diaCalculado !== diaObjetivo) {
+      const diferencia = diaObjetivo - diaCalculado;
+      fechaObjetivo.setDate(fechaObjetivo.getDate() + diferencia);
+    }
     
     const year = fechaObjetivo.getFullYear();
     const month = String(fechaObjetivo.getMonth() + 1).padStart(2, '0');
@@ -465,8 +531,30 @@ export default function Crear_EditarCita({ navigation, route }) {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm() || !usuario) {
-      Alert.alert('Error', !usuario ? 'Sesion no valida' : 'Corrige los errores en el formulario');
+    if (!usuario) {
+      Alert.alert('Error', 'Sesion no valida');
+      return;
+    }
+
+    if (formData.fechaCita && formData.horaCita) {
+      const esCompatible = verificarCompatibilidadFechaHorario(formData.fechaCita, formData.horaCita);
+      if (!esCompatible) {
+        const fechaObj = new Date(formData.fechaCita);
+        const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+        const diaFecha = diasSemana[fechaObj.getDay()];
+        const horarioSeleccionado = horariosDisponibles.find(h => h.horaInicio === formData.horaCita);
+        
+        Alert.alert(
+          'Error de compatibilidad',
+          `El horario está puesto en ${obtenerNombreDiaCompleto(horarioSeleccionado?.dia)} y la fecha no coincide con el día del horario seleccionado por lo cual no se puede crear la cita hasta que concuerde bien un día del horario con el mismo día de la fecha.`,
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+    }
+
+    if (!validateForm()) {
+      Alert.alert('Error', 'Corrige los errores en el formulario');
       return;
     }
 
@@ -594,7 +682,13 @@ export default function Crear_EditarCita({ navigation, route }) {
     return formatted;
   };
 
+  const isPacienteEditingCitaConfirmada = () => {
+    const estado = (citaAEditar?.estado || '').toLowerCase();
+    return isEditing && usuario?.role === 'paciente' && (estado === 'confirmada' || estado === 'confirmed');
+  };
+
   const isFieldDisabled = (field) => {
+    if (isPacienteEditingCitaConfirmada() && (field === 'fechaCita' || field === 'horaCita')) return true;
     if (!isEditing && usuario?.role === 'paciente' && field === 'pacientes_id') return true;
     if (!isEditing && usuario?.role === 'paciente' && field === 'estado') return true;
     if (!isEditing && usuario?.role === 'medico' && field === 'medicos_id') return true;
@@ -608,6 +702,7 @@ export default function Crear_EditarCita({ navigation, route }) {
 
   const shouldShowField = (field) => {
     if (usuario?.role === 'paciente' && field === 'pacientes_id') return false;
+    if (usuario?.role === 'paciente' && field === 'observaciones') return false;
     if (usuario?.role === 'medico' && field === 'medicos_id') return false;
     return true;
   };
@@ -677,6 +772,9 @@ export default function Crear_EditarCita({ navigation, route }) {
         )}
         
         {errors['horaCita'] && <Text style={styles.errorText}>{errors['horaCita']}</Text>}
+        {isPacienteEditingCitaConfirmada() && (
+          <Text style={styles.infoTextSmall}>No se puede editar porque ya está confirmada.</Text>
+        )}
         
         {mostrarPicker && horariosLibres.length === 0 && (
           <Text style={styles.infoTextSmall}>
@@ -764,6 +862,100 @@ export default function Crear_EditarCita({ navigation, route }) {
     );
   };
 
+  const renderDatePicker = () => (
+    <Modal
+      visible={showDatePicker}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowDatePicker(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Seleccionar Fecha</Text>
+            <TouchableOpacity
+              style={styles.modalClose}
+              onPress={() => setShowDatePicker(false)}
+            >
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.datePickerContainer}>
+            <Text style={styles.datePickerLabel}>Selecciona la fecha de tu cita:</Text>
+            <View style={styles.dateInputContainer}>
+              <TextInput
+                style={styles.dateInput}
+                value={formData.fechaCita}
+                onChangeText={(value) => handleInputChange('fechaCita', formatDateInput(value))}
+                placeholder="YYYY-MM-DD"
+                keyboardType="numeric"
+                maxLength={10}
+              />
+            </View>
+            <Text style={styles.datePickerHint}>
+              Formato: AAAA-MM-DD (ejemplo: 2024-12-25)
+            </Text>
+            
+            <View style={styles.datePickerButtons}>
+              <TouchableOpacity
+                style={styles.datePickerButton}
+                onPress={() => {
+                  const today = new Date();
+                  const todayString = today.toISOString().split('T')[0];
+                  handleInputChange('fechaCita', todayString);
+                }}
+              >
+                <Text style={styles.datePickerButtonText}>Hoy</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.datePickerButton}
+                onPress={() => {
+                  const tomorrow = new Date();
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+                  const tomorrowString = tomorrow.toISOString().split('T')[0];
+                  handleInputChange('fechaCita', tomorrowString);
+                }}
+              >
+                <Text style={styles.datePickerButtonText}>Mañana</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <TouchableOpacity
+              style={styles.confirmDateButton}
+              onPress={() => setShowDatePicker(false)}
+            >
+              <Text style={styles.confirmDateButtonText}>Confirmar Fecha</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    
+    return date.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const estadoOptions = [
+    { value: 'pendiente', label: 'Pendiente' },
+    { value: 'confirmada', label: 'Confirmada' },
+    { value: 'cancelada', label: 'Cancelada' },
+    { value: 'completada', label: 'Completada' }
+  ];
+
+  const isLoading = false;
+
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <StatusBar style="dark" />
@@ -780,104 +972,72 @@ export default function Crear_EditarCita({ navigation, route }) {
           </Text>
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="people-outline" size={20} color="#2196F3" />
-            <Text style={styles.sectionTitle}>Informacion de la Cita</Text>
-          </View>
-
-          {renderPicker(
-            'Paciente',
-            'pacientes_id',
-            pacientes.map(paciente => ({
-              label: `${paciente.nombre} ${paciente.apellido} (${paciente.numeroDocumento || paciente.documento})`,
-              value: String(paciente.id)
-            })),
-            usuario?.role !== 'admin'
+        {renderPicker('Paciente', 'pacientes_id', pacientes.map(p => ({ value: String(p.id), label: `${p.nombre} ${p.apellido}`.trim() })), true)}
+        {renderMedicoPicker()}
+        {renderHoraCitaPicker()}
+        
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>
+            Fecha de la Cita
+            <Text style={styles.required}> *</Text>
+            {isFieldDisabled('fechaCita') && <Text style={styles.disabledText}> (Solo lectura)</Text>}
+          </Text>
+          <TouchableOpacity
+            style={[styles.dateButton, errors.fechaCita && styles.inputError, isFieldDisabled('fechaCita') && styles.inputDisabled]}
+            onPress={() => !isFieldDisabled('fechaCita') && setShowDatePicker(true)}
+            disabled={isFieldDisabled('fechaCita')}
+          >
+            <Ionicons name="calendar-outline" size={20} color="#666" />
+            <Text style={[styles.dateButtonText, isFieldDisabled('fechaCita') && styles.disabledText]}>
+              {formData.fechaCita ? formatDate(formData.fechaCita) : 'Seleccionar fecha'}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color="#666" />
+          </TouchableOpacity>
+          {errors.fechaCita && <Text style={styles.errorText}>{errors.fechaCita}</Text>}
+          {isPacienteEditingCitaConfirmada() && (
+            <Text style={styles.infoTextSmall}>No se puede editar porque ya está confirmada.</Text>
           )}
+        </View>
+        {renderPicker('Estado', 'estado', estadoOptions, true)}
 
-          {shouldShowField('medicos_id') && renderMedicoPicker()}
-          {renderHoraCitaPicker()}
-
+        {shouldShowField('observaciones') && (
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>
-              Fecha de la Cita<Text style={styles.required}> *</Text>
-              <Text style={styles.disabledText}> (Generada automaticamente)</Text>
+              Observaciones
+              {isFieldDisabled('observaciones') && <Text style={styles.disabledText}> (Solo lectura)</Text>}
             </Text>
             <TextInput
-              style={[styles.textInput, styles.inputDisabled]}
-              value={formData.fechaCita || ''}
-              placeholder="Se generara al seleccionar horario"
-              editable={false}
+              style={[styles.textArea, errors.observaciones && styles.inputError, isFieldDisabled('observaciones') && styles.inputDisabled]}
+              value={formData.observaciones}
+              onChangeText={(value) => handleInputChange('observaciones', value)}
+              placeholder="Ingresa observaciones adicionales..."
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+              editable={!isFieldDisabled('observaciones')}
             />
-            {errors['fechaCita'] && <Text style={styles.errorText}>{errors['fechaCita']}</Text>}
-          </View>
-
-          {renderPicker(
-            'Estado',
-            'estado',
-            [
-              { label: 'Pendiente', value: 'pendiente' },
-              { label: 'Completada', value: 'completada' },
-              { label: 'Confirmada', value: 'confirmada' },
-              { label: 'Cancelada', value: 'cancelada' }
-            ],
-            true
-          )}
-        </View>
-
-        {(usuario?.role === 'admin' || usuario?.role === 'medico') && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="document-text-outline" size={20} color="#2196F3" />
-              <Text style={styles.sectionTitle}>
-                Observaciones
-                <Text style={styles.optionalText}> (Opcional)</Text>
-              </Text>
-            </View>
-
-            {renderInput(
-              'Observaciones', 
-              'observaciones', 
-              usuario?.role === 'admin' 
-                ? 'Observaciones adicionales (opcional)...' 
-                : 'Notas medicas o instrucciones (opcional)...', 
-              'default', 
-              true
-            )}
+            {errors.observaciones && <Text style={styles.errorText}>{errors.observaciones}</Text>}
           </View>
         )}
 
-        {usuario?.role === 'paciente' && !isEditing && (
-          <View style={styles.infoContainer}>
-            <Ionicons name="information-circle" size={20} color="#FF9800" />
-            <Text style={[styles.infoText, { color: '#F57C00' }]}>
-              Las observaciones no están disponibles al crear una cita. Podrás agregarlas después editando la cita.
+        <TouchableOpacity
+          style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
+          onPress={handleSubmit}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#FFF" size="small" />
+          ) : (
+            <Text style={styles.submitButtonText}>
+              {isEditing ? 'Actualizar Cita' : 'Crear Cita'}
             </Text>
-          </View>
-        )}
-
-        <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()} disabled={false}>
-            <Text style={styles.cancelButtonText}>Cancelar</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.saveButton]}
-            onPress={handleSubmit}
-            disabled={!usuario}
-          >
-            <>
-              <Ionicons name="checkmark" size={20} color="#FFF" />
-              <Text style={styles.saveButtonText}>
-                {isEditing ? 'Actualizar' : 'Guardar'}
-              </Text>
-            </>
-          </TouchableOpacity>
-        </View>
+          )}
+        </TouchableOpacity>
 
         <View style={styles.footerSpace} />
       </ScrollView>
+      
+      {renderDatePicker()}
     </KeyboardAvoidingView>
   );
 }
@@ -886,18 +1046,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-  },
-  infoTextSmall: {
-    fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
-    marginTop: 4,
-  },
-  infoContainerSmall: {
-    backgroundColor: '#F0F0F0',
-    borderRadius: 6,
-    padding: 8,
-    marginTop: 4,
   },
   header: {
     backgroundColor: '#FFF',
@@ -935,22 +1083,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
   },
-  infoContainer: {
-    backgroundColor: '#E3F2FD',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderLeftWidth: 4,
-    borderLeftColor: '#2196F3',
-  },
-  infoText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#1976D2',
-    flex: 1,
-  },
   section: {
     backgroundColor: '#FFF',
     borderRadius: 12,
@@ -976,11 +1108,6 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: 8,
   },
-  optionalText: {
-    fontSize: 14,
-    color: '#4CAF50',
-    fontWeight: '500',
-  },
   inputContainer: {
     marginBottom: 16,
   },
@@ -992,11 +1119,6 @@ const styles = StyleSheet.create({
   },
   required: {
     color: '#F44336',
-  },
-  disabledText: {
-    color: '#999',
-    fontStyle: 'italic',
-    fontSize: 12,
   },
   textInput: {
     borderWidth: 1,
@@ -1012,10 +1134,6 @@ const styles = StyleSheet.create({
     height: 80,
     textAlignVertical: 'top',
   },
-  inputDisabled: {
-    backgroundColor: '#F5F5F5',
-    color: '#999',
-  },
   pickerContainer: {
     borderWidth: 1,
     borderColor: '#E0E0E0',
@@ -1026,10 +1144,6 @@ const styles = StyleSheet.create({
     height: 50,
     color: '#333',
   },
-  pickerDisabled: {
-    backgroundColor: '#F5F5F5',
-    color: '#999',
-  },
   inputError: {
     borderColor: '#F44336',
   },
@@ -1037,6 +1151,93 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#F44336',
     marginTop: 4,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  loadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#666',
+  },
+  errorContainer: {
+    padding: 16,
+    backgroundColor: '#FFF3E0',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFB74D',
+    alignItems: 'center',
+  },
+  warningText: {
+    fontSize: 14,
+    color: '#FF8F00',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  noDataText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  retryButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  usuarioInfoContainer: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  usuarioInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  usuarioInfoText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+  },
+  roleChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  roleText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  loadingUserContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  loadingUserText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#666',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -1076,7 +1277,180 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFF',
   },
+  infoContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1976D2',
+    marginLeft: 8,
+    lineHeight: 20,
+  },
+  infoTextSmall: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  infoContainerSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  disabledText: {
+    color: '#999',
+    fontSize: 12,
+  },
+  inputDisabled: {
+    backgroundColor: '#F5F5F5',
+    opacity: 0.6,
+  },
+  pickerDisabled: {
+    opacity: 0.6,
+  },
+  textArea: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: '#FFF',
+    color: '#333',
+    minHeight: 100,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#FFF',
+  },
+  dateButtonText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 8,
+  },
+  submitButton: {
+    backgroundColor: '#2196F3',
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#BBDEFB',
+  },
+  submitButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   footerSpace: {
-    height: 40,
-  }
+    height: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 20,
+    width: '90%',
+    maxWidth: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalClose: {
+    padding: 4,
+  },
+  datePickerContainer: {
+    alignItems: 'center',
+  },
+  datePickerLabel: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  dateInputContainer: {
+    width: '100%',
+    marginBottom: 8,
+  },
+  dateInput: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    textAlign: 'center',
+    backgroundColor: '#FFF',
+    color: '#333',
+  },
+  datePickerHint: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  datePickerButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  datePickerButton: {
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#2196F3',
+  },
+  datePickerButtonText: {
+    color: '#2196F3',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  confirmDateButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+  },
+  confirmDateButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });

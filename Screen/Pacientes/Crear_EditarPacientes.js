@@ -3,11 +3,12 @@ import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity, Alert,
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import { useFocusEffect } from '@react-navigation/native';
 import AuthService from '../../Src/Services/AuthService';
 import { useNotifications } from '../../Src/Hooks/useNotifications';
 
 export default function Crear_EditarPacientes({ navigation, route }) {
+  const { notifyUserCreated, permissionsGranted } = useNotifications();
+  const [loading, setLoading] = useState(false);
   const [usuario, setUsuario] = useState(null);
   const [formData, setFormData] = useState({
     nombre: '',
@@ -28,19 +29,12 @@ export default function Crear_EditarPacientes({ navigation, route }) {
   const pacienteAEditar = route?.params?.paciente;
   const isEditing = !!pacienteAEditar;
 
-  const { notifyUserCreated, permissionsGranted } = useNotifications();
-
   useEffect(() => {
     loadUsuarioData();
     if (isEditing && pacienteAEditar) {
       cargarDatosPaciente();
     }
   }, []);
-
-  useFocusEffect(
-    React.useCallback(() => {
-    }, [])
-  );
 
   const loadUsuarioData = async () => {
     try {
@@ -129,16 +123,18 @@ export default function Crear_EditarPacientes({ navigation, route }) {
       newErrors.telefono = 'El telefono solo puede contener numeros, espacios, guiones, + y parentesis';
     }
 
-    if (!isEditing && !formData.password.trim()) {
-      newErrors.password = 'La contraseña es obligatoria';
-    } else if (!isEditing && formData.password.length < 8) {
-      newErrors.password = 'La contraseña debe tener al menos 8 caracteres';
-    }
+    if (!isEditing) {
+      if (!formData.password.trim()) {
+        newErrors.password = 'La contraseña es obligatoria';
+      } else if (formData.password.length < 8) {
+        newErrors.password = 'La contraseña debe tener al menos 8 caracteres';
+      }
 
-    if (!isEditing && !formData.password_confirmation.trim()) {
-      newErrors.password_confirmation = 'La confirmación de contraseña es obligatoria';
-    } else if (!isEditing && formData.password !== formData.password_confirmation) {
-      newErrors.password_confirmation = 'Las contraseñas no coinciden';
+      if (!formData.password_confirmation.trim()) {
+        newErrors.password_confirmation = 'La confirmación de contraseña es obligatoria';
+      } else if (formData.password !== formData.password_confirmation) {
+        newErrors.password_confirmation = 'Las contraseñas no coinciden';
+      }
     }
 
     setErrors(newErrors);
@@ -157,6 +153,21 @@ export default function Crear_EditarPacientes({ navigation, route }) {
   }
 
   try {
+    const tokenVerification = await AuthService.verifyToken();
+    console.log('Verificacion de token:', tokenVerification);
+    
+    if (!tokenVerification.success) {
+      Alert.alert('Error', 'Tu sesion ha expirado. Por favor inicia sesion nuevamente.');
+      return;
+    }
+  } catch (error) {
+    Alert.alert('Error', 'Problema de autenticacion. Por favor inicia sesion nuevamente.');
+    return;
+  }
+
+  try {
+    setLoading(true);
+
     let pacienteData;
     if (isEditing) {
       const { password, password_confirmation, ...dataWithoutPassword } = formData;
@@ -173,7 +184,6 @@ export default function Crear_EditarPacientes({ navigation, route }) {
       };
     }
 
-
     let response;
     if (isEditing) {
       response = await AuthService.editarPaciente(pacienteAEditar.id, pacienteData);
@@ -181,11 +191,10 @@ export default function Crear_EditarPacientes({ navigation, route }) {
       response = await AuthService.crearPaciente(pacienteData);
     }
 
-
-    if (response && response.success) {
+    if (response && response.data) {
       if (!isEditing && permissionsGranted) {
-        const patientData = response.data || {
-          id: 'nuevo',
+        const patientData = {
+          id: response.data?.id || 'nuevo',
           nombre: formData.nombre,
           apellido: formData.apellido
         };
@@ -193,7 +202,7 @@ export default function Crear_EditarPacientes({ navigation, route }) {
       }
 
       Alert.alert(
-        'Éxito',
+        'exito',
         isEditing ? 'Paciente actualizado correctamente' : 'Paciente creado correctamente',
         [
           {
@@ -203,11 +212,9 @@ export default function Crear_EditarPacientes({ navigation, route }) {
         ]
       );
     } else {
-      throw new Error(response?.message || 'Error al procesar la solicitud');
+      throw new Error(response?.response?.data?.message || 'Error al procesar la solicitud');
     }
   } catch (error) {
-    console.error('❌ Error completo al guardar paciente:', error);
-    
     let errorMessage = 'Error desconocido al guardar el paciente';
     
     if (error.response) {
@@ -224,27 +231,13 @@ export default function Crear_EditarPacientes({ navigation, route }) {
         case 422:
           if (data.errors) {
             const firstError = Object.values(data.errors)[0];
-            let specificError = Array.isArray(firstError) ? firstError[0] : firstError;
-            
-            if (specificError.includes('email') && specificError.includes('unique')) {
-              errorMessage = 'Ya existe un paciente con este email';
-            } else if (specificError.includes('numeroDocumento') && specificError.includes('unique')) {
-              errorMessage = 'Ya existe un paciente con este número de documento';
-            } else {
-              errorMessage = specificError;
-            }
+            errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
           } else {
             errorMessage = data.message || 'Datos invalidos';
           }
           break;
         case 409:
-          if (data.message && data.message.includes('email')) {
-            errorMessage = 'Ya existe un paciente con este email';
-          } else if (data.message && data.message.includes('numeroDocumento')) {
-            errorMessage = 'Ya existe un paciente con este número de documento';
-          } else {
-            errorMessage = 'Ya existe un paciente con estos datos';
-          }
+          errorMessage = 'Ya existe un paciente con este numero de documento';
           break;
         case 500:
           if (data.message && data.message.includes("usuario_id")) {
@@ -260,6 +253,7 @@ export default function Crear_EditarPacientes({ navigation, route }) {
     
     Alert.alert('Error', errorMessage);
   } finally {
+    setLoading(false);
   }
 };
 
@@ -283,12 +277,12 @@ export default function Crear_EditarPacientes({ navigation, route }) {
     placeholder,
     keyboardType = 'default',
     multiline = false,
-    maxLength = undefined
+    maxLength = null
   ) => (
     <View style={styles.inputContainer}>
       <Text style={styles.inputLabel}>
         {label}
-        {['nombre', 'apellido', 'numeroDocumento', 'telefono', 'email', 'genero'].includes(field) && (
+        {['nombre', 'apellido', 'numeroDocumento', 'telefono', 'email', 'genero', 'password', 'password_confirmation'].includes(field) && (
           <Text style={styles.required}> *</Text>
         )}
       </Text>
@@ -310,9 +304,10 @@ export default function Crear_EditarPacientes({ navigation, route }) {
         keyboardType={keyboardType}
         multiline={multiline}
         numberOfLines={multiline ? 3 : 1}
-        {...(maxLength && { maxLength })}
+        maxLength={maxLength}
         autoCapitalize={field === 'email' ? 'none' : 'words'}
         autoCorrect={false}
+        secureTextEntry={field === 'password' || field === 'password_confirmation'}
       />
       {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
     </View>
@@ -426,22 +421,26 @@ export default function Crear_EditarPacientes({ navigation, route }) {
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={() => navigation.goBack()}
-            disabled={false}
+            disabled={loading}
           >
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.saveButton]}
+            style={[styles.saveButton, loading && styles.saveButtonDisabled]}
             onPress={handleSubmit}
-            disabled={!usuario}
+            disabled={loading || !usuario}
           >
-            <>
-              <Ionicons name="checkmark" size={20} color="#FFF" />
-              <Text style={styles.saveButtonText}>
-                {isEditing ? 'Actualizar' : 'Guardar'}
-              </Text>
-            </>
+            {loading ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <>
+                <Ionicons name="checkmark" size={20} color="#FFF" />
+                <Text style={styles.saveButtonText}>
+                  {isEditing ? 'Actualizar' : 'Guardar'}
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -590,6 +589,17 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 10,
     fontWeight: '600',
+  },
+  loadingUserContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  loadingUserText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#666',
   },
   actionButtons: {
     flexDirection: 'row',

@@ -260,10 +260,31 @@ export const NotificationProvider = ({ children }) => {
     try {
       const { nombre, apellido } = userData;
       
+      let userTypeText = '';
+      let titleText = '';
+      
+      switch (userType) {
+        case 'medico':
+          userTypeText = 'Médico';
+          titleText = '👨‍⚕️ Nuevo Médico Registrado';
+          break;
+        case 'paciente':
+          userTypeText = 'Paciente';
+          titleText = '👤 Nuevo Paciente Registrado';
+          break;
+        case 'admin':
+          userTypeText = 'Administrador';
+          titleText = '👨‍💼 Nuevo Administrador Registrado';
+          break;
+        default:
+          userTypeText = 'Usuario';
+          titleText = '👤 Nuevo Usuario Registrado';
+      }
+      
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: '👤 Nuevo Usuario Registrado',
-          body: `${userType === 'paciente' ? 'Paciente' : userType === 'medico' ? 'Médico' : 'Administrador'} ${nombre} ${apellido} ha sido registrado exitosamente`,
+          title: titleText,
+          body: `${userTypeText} ${nombre && apellido ? `${nombre} ${apellido}` : nombre || apellido || 'sin datos'} ha sido registrado exitosamente`,
           data: { 
             type: 'user_created',
             userType: userType,
@@ -402,3 +423,4 @@ export const NotificationProvider = ({ children }) => {
     </NotificationContext.Provider>
   );
 };
+
